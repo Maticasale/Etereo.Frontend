@@ -110,7 +110,7 @@ export default function LoginPage() {
         className="text-5xl font-bold italic mb-8 block text-[var(--color-primary)]"
         style={{ fontFamily: 'var(--font-heading)' }}
       >
-        etereo
+        Etereo
       </span>
 
       {/* Card */}
