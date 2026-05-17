@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
+import { useEffect } from 'react'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { useAuthStore } from '@/store/authStore'
 import { Toaster } from '@/components/ui/Toaster'
@@ -40,6 +41,28 @@ import ConfigEmailPage from '@/pages/config/ConfigEmailPage'
 import CategoriasPage from '@/pages/imputaciones/catalogos/CategoriasPage'
 import MetodosPagoPage from '@/pages/imputaciones/catalogos/MetodosPagoPage'
 import MotivosBloqueoPage from '@/pages/imputaciones/catalogos/MotivosBloqueoPage'
+
+// ─── PostAuthRedirectHandler ──────────────────────────────────────────────────
+// Maneja el caso donde RegistroPage (u otras páginas futuras) terminan con
+// ?redirect=reserva en la URL sin redirigir explícitamente.
+// LoginPage lo maneja inline; este handler es el safety-net centralizado.
+
+function PostAuthRedirectHandler() {
+  const { usuario } = useAuthStore()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
+
+  useEffect(() => {
+    if (!usuario) return
+    // Si el usuario acaba de autenticarse y la URL aún tiene ?redirect=reserva
+    if (searchParams.get('redirect') === 'reserva') {
+      navigate('/?iniciar_reserva=1', { replace: true })
+    }
+  }, [usuario, location.search]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return null
+}
 
 // ─── ProtectedRoute ──────────────────────────────────────────────────────────
 
@@ -84,6 +107,7 @@ export default function App() {
   return (
     <GoogleOAuthProvider clientId={googleClientId ?? ''}>
       <BrowserRouter>
+        <PostAuthRedirectHandler />
         <Routes>
           {/* ── Rutas públicas ── */}
           <Route path="/login" element={<LoginPage />} />

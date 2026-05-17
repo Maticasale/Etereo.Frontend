@@ -232,8 +232,8 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       {/* Logo */}
       <div className="px-5 pt-6 pb-4">
         <span
-          className="block text-[28px] font-bold italic text-[var(--color-tertiary)]"
-          style={{ fontFamily: 'var(--font-heading)' }}
+          className="block text-[34px] text-[var(--color-tertiary)]"
+          style={{ fontFamily: 'var(--font-display)', fontWeight: 400, lineHeight: 1 }}
         >
           etereo
         </span>

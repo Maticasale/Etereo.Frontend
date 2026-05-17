@@ -18,6 +18,7 @@
   --color-warning:         #E67E22;
 
   /* ── Tipografía ── */
+  --font-display: 'Great Vibes', cursive;
   --font-heading: 'Playfair Display', serif;
   --font-body:    'Manrope', sans-serif;
 

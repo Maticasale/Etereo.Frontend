@@ -1,7 +1,7 @@
 # Etereo Frontend — Source of Truth
 
 > Documento técnico maestro del frontend. Refleja el diseño acordado del sistema de gestión de la estética Etereo.
-> Última actualización: Mayo 2026 — v3: setup inicial completo — Vite, Tailwind v4, sistema de diseño, routing, componentes UI base, LoginPage funcional.
+> Última actualización: Mayo 2026 — v4: LoginPage split atmosférico (Great Vibes + hojas botánicas), ReservaTurnoModal, hook useReservaTurno, flujo redirect post-login.
 
 ---
 
@@ -70,10 +70,15 @@ El proxy de Vite en dev mapea `/api/*` → `https://etereobackend-production.up.
 
 | Variable | Valor | Uso |
 |---|---|---|
-| `--font-heading` | `'Playfair Display', serif` | Títulos, logo |
-| `--font-body` | `'Manrope', sans-serif` | Todo el resto |
+| `--font-display` | `'Great Vibes', cursive` | Logo "etereo/Etéreo" (wordmark) |
+| `--font-heading` | `'Playfair Display', serif` | Títulos del panel interno |
+| `--font-body` | `'Manrope', sans-serif` | Todo el resto (body, labels, botones) |
 
-**Logo "etereo"**: Playfair Display **italic bold**, color `--color-tertiary` sobre fondo primary, tamaño 28px en sidebar y 48px en login. **No existe una fuente separada para el logo.**
+**Logo "etereo"**: usa `var(--font-display)` (Great Vibes), weight 400, `lineHeight: 1`. Tamaño 34px en Sidebar, 168px centrado en panel izquierdo de LoginPage. El wordmark "Etéreo" en la LoginPage usa `var(--font-display)` también para la referencia en el pie del formulario.
+
+**Google Fonts importadas en `index.html`**: Great Vibes (400), Cormorant Garamond (300/400/500, italic), Playfair Display (400/600/700, italic), Manrope (400/500/600/700).
+
+**Cormorant Garamond**: usado localmente en LoginPage (h1 "Bienvenido.", cita del panel izquierdo) y en ReservaTurnoModal (título "Reservá tu turno.", cita). Se aplica con `fontFamily` inline, no como variable global.
 
 ### Radios y sombras
 
@@ -547,6 +552,49 @@ En dev, `vite.config.ts` proxea `/api` al backend local.
 | Integración WhatsApp Business API | Baja |
 | Tests unitarios (Vitest + RTL) | Media |
 | Soporte mobile completo en panel interno | Media |
+
+---
+
+## 13. Flujo de autenticación del cliente
+
+### Flujo de entrada
+
+```
+Landing → botón "Ingresar" en header → /login (página dedicada)
+
+Landing → botón "Reservar turno":
+  Si logueado (cualquier rol) → wizard directo  [useReservaTurno → setWizardOpen(true)]
+  Si no logueado             → ReservaTurnoModal
+    → "Ingresar con Google"   → Google OAuth → post-auth: /?iniciar_reserva=1
+    → "Ingresar con email"    → /login?redirect=reserva
+    → "Registrarme gratis"    → /registro?redirect=reserva
+    → "Continuar sin cuenta"  → cierra modal, wizard anónimo
+
+Post login con ?redirect=reserva   → navigate('/?iniciar_reserva=1', { replace: true })
+Post ?iniciar_reserva=1 en URL     → useReservaTurno detecta, limpia URL, setWizardOpen(true)
+```
+
+### Componentes involucrados
+
+| Componente | Archivo |
+|---|---|
+| `ReservaTurnoModal` | `src/components/shared/ReservaTurnoModal.tsx` |
+| `useReservaTurno` | `src/hooks/useReservaTurno.ts` |
+| `PostAuthRedirectHandler` | `src/App.tsx` (safety-net para /registro?redirect=reserva) |
+
+### Lógica clave
+
+- **`LoginPage.tsx`** — `redirectAfterLogin()` lee `?redirect=reserva` del `useSearchParams` y navega a `/?iniciar_reserva=1` (replace).
+- **`PostAuthRedirectHandler`** (App.tsx) — efecto que observa `[usuario, location.search]`; si el usuario se autentica y aún hay `?redirect=reserva` en la URL (ej: RegistroPage), redirige a `/?iniciar_reserva=1`.
+- **`useReservaTurno`** — en `useEffect([], [])` detecta `?iniciar_reserva=1`, hace `setSearchParams({}, { replace: true })` para limpiar la URL del historial y pone `wizardOpen = true`.
+- El modal **nunca** se muestra si `usuario !== null` — la lógica de apertura vive 100% en `handleReservarTurno()`.
+
+### LoginPage — diseño visual
+
+Layout split 2 columnas (`1.05fr 1fr`, `100vw × 100vh`):
+- **Panel izquierdo** (dark): fondo `linear-gradient(#5a4530 → #4A3728 → #2a1d12)` + SVG botánico inline (24+18 elipses doradas generadas con `.map()`) + logo "Etéreo" en Great Vibes 168px + cita en Cormorant Garamond italic.
+- **Panel derecho** (cream `--color-tertiary`): eyebrow dorado + h1 "Bienvenido." en Cormorant Garamond 56px + inputs underline-only (`SplitInput` local, no usa el `<Input>` global) + botón sin border-radius + Google OAuth.
+- La lógica funcional (RHF/Zod, API calls, redirect por rol, Google OAuth) es idéntica a la versión anterior.
 
 ---
 
