@@ -4,9 +4,15 @@ import { GoogleOAuthProvider } from '@react-oauth/google'
 import { useAuthStore } from '@/store/authStore'
 import { Toaster } from '@/components/ui/Toaster'
 import AppLayout from '@/components/layout/AppLayout'
+import PublicLayout from '@/components/layout/PublicLayout'
 
-// Auth
+// Público
+import LandingPage from '@/pages/public/LandingPage'
+
+// Auth — layout propio completo, fuera del PublicLayout
 import LoginPage from '@/pages/auth/LoginPage'
+import RegistroPage from '@/pages/auth/RegistroPage'
+import CambiarPasswordPage from '@/pages/auth/CambiarPasswordPage'
 
 // Portal (cliente)
 import ReservaTurnoPage from '@/pages/portal/ReservaTurnoPage'
@@ -14,10 +20,6 @@ import MisTurnosPage from '@/pages/portal/MisTurnosPage'
 import MisCuponesPage from '@/pages/portal/MisCuponesPage'
 import MiPerfilPage from '@/pages/portal/MiPerfilPage'
 import CalificarPage from '@/pages/calificaciones/CalificarPage'
-
-// Placeholders / rutas públicas
-import CambiarPasswordPage from '@/pages/auth/CambiarPasswordPage'
-import RegistroPage from '@/pages/auth/RegistroPage'
 
 // Panel interno
 import DashboardPage from '@/pages/dashboard/DashboardPage'
@@ -43,9 +45,9 @@ import MetodosPagoPage from '@/pages/imputaciones/catalogos/MetodosPagoPage'
 import MotivosBloqueoPage from '@/pages/imputaciones/catalogos/MotivosBloqueoPage'
 
 // ─── PostAuthRedirectHandler ──────────────────────────────────────────────────
-// Maneja el caso donde RegistroPage (u otras páginas futuras) terminan con
-// ?redirect=reserva en la URL sin redirigir explícitamente.
-// LoginPage lo maneja inline; este handler es el safety-net centralizado.
+// Safety-net para RegistroPage y otras páginas que terminen con ?redirect=reserva.
+// LoginPage lo maneja inline; este handler cubre el resto de casos.
+// Redirige a / con ?iniciar_reserva=1 → LandingPage lo detecta y navega a /reservar.
 
 function PostAuthRedirectHandler() {
   const { usuario } = useAuthStore()
@@ -55,7 +57,6 @@ function PostAuthRedirectHandler() {
 
   useEffect(() => {
     if (!usuario) return
-    // Si el usuario acaba de autenticarse y la URL aún tiene ?redirect=reserva
     if (searchParams.get('redirect') === 'reserva') {
       navigate('/?iniciar_reserva=1', { replace: true })
     }
@@ -73,17 +74,14 @@ interface ProtectedRouteProps {
 function ProtectedRoute({ roles }: ProtectedRouteProps) {
   const { accessToken, usuario } = useAuthStore()
 
-  // Sin token → login
   if (!accessToken || !usuario) {
     return <Navigate to="/login" replace />
   }
 
-  // Debe cambiar contraseña → forzar esa ruta
   if (usuario.debeCambiarPassword) {
     return <Navigate to="/cambiar-password" replace />
   }
 
-  // Rol incorrecto → home
   if (roles && !roles.includes(usuario.rol)) {
     return <Navigate to="/" replace />
   }
@@ -109,12 +107,20 @@ export default function App() {
       <BrowserRouter>
         <PostAuthRedirectHandler />
         <Routes>
-          {/* ── Rutas públicas ── */}
+
+          {/* ── Rutas públicas con PublicLayout (header + outlet) ── */}
+          <Route element={<PublicLayout />}>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/reservar" element={<ReservaTurnoPage />} />
+          </Route>
+
+          {/* ── Auth — layout propio completo, sin PublicHeader ── */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/registro" element={<RegistroPage />} />
           <Route path="/cambiar-password" element={<CambiarPasswordPage />} />
+
+          {/* ── Calificar — anónimo con token JWT en query param ── */}
           <Route path="/calificar" element={<CalificarPage />} />
-          <Route path="/" element={<ReservaTurnoPage />} />
 
           {/* ── Rutas cliente autenticado ── */}
           <Route element={<ProtectedRoute roles={['Cliente']} />}>

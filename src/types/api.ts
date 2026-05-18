@@ -1,4 +1,4 @@
-// ─── Auth ───────────────────────────────────────────────────────────────────
+// Auth
 
 export interface LoginRequest {
   email: string
@@ -61,7 +61,7 @@ export interface BloquearUsuarioRequest {
   motivo: string
 }
 
-// ─── Usuarios ───────────────────────────────────────────────────────────────
+// Usuarios
 
 export interface ActualizarUsuarioRequest {
   nombre?: string
@@ -83,173 +83,453 @@ export interface UsuariosListResponse {
   total: number
 }
 
-// ─── Servicios ───────────────────────────────────────────────────────────────
+// Servicios
+
+export interface VarianteDto {
+  id: number
+  nombre: string
+  precio: number
+  duracionMin: number
+  sexo: string
+  activo: boolean
+  ordenDisplay: number
+}
+
+export interface SubservicioDto {
+  id: number
+  servicioId: number
+  nombre: string
+  descripcion?: string
+  precio?: number
+  duracionMin?: number
+  requiereSilencio: boolean
+  esPack: boolean
+  detallePack?: string
+  sexo: string
+  activo: boolean
+  ordenDisplay: number
+  variantes: VarianteDto[]
+}
 
 export interface ServicioDto {
   id: number
   nombre: string
   salon: string
-  activo: boolean
-  esPack: boolean
-  ordenDisplay?: number
   categoriaImputacionId?: number
+  activo: boolean
+  ordenDisplay: number
   subservicios: SubservicioDto[]
 }
 
-export interface SubservicioDto {
-  id: number
-  nombre: string
-  duracionMinutos: number
-  precio: number
-  activo: boolean
-  sexo?: string
-  tieneVariantes: boolean
-  variantes: VarianteDto[]
-  zonasIncluidas?: string[]
+export interface EstadoConfiguracionDto {
+  configurado: boolean
+  mensaje: string
 }
 
-export interface VarianteDto {
+export interface ReglaDescuentoDto {
   id: number
-  nombre: string
-  duracionMinutos: number
-  precio: number
+  servicioId: number
+  nombreServicio: string
+  zonasMinimas: number
+  porcentajeDescuento: number
   activo: boolean
 }
 
-// ─── Turnos ──────────────────────────────────────────────────────────────────
+// Turnos y sesiones
 
 export type EstadoTurno =
   | 'PendienteConfirmacion'
   | 'Confirmado'
-  | 'Realizado'
-  | 'Cancelado'
   | 'Rechazado'
+  | 'Cancelado'
   | 'Multa'
   | 'Ausente'
+  | 'Realizado'
   | 'Impago'
   | 'Publicidad'
 
+export interface CrearTurnoRequest {
+  clienteId?: number
+  nombreAnonimo?: string
+  telefonoAnonimo?: string
+  subservicioId: number
+  varianteId?: number
+  fechaHoraInicio: string
+  notas?: string
+  cuponId?: number
+}
+
+export interface CrearTurnoEnSesionRequest {
+  subservicioId: number
+  varianteId?: number
+}
+
+export interface CrearSesionRequest {
+  clienteId?: number
+  nombreAnonimo?: string
+  telefonoAnonimo?: string
+  operarioId?: number
+  salon: string
+  fechaHoraInicio: string
+  zonas: CrearTurnoEnSesionRequest[]
+}
+
+export interface AsignarOperariaRequest {
+  operarioId: number
+}
+
+export interface RechazarTurnoRequest {
+  motivoRechazo: string
+}
+
+export interface RealizarTurnoRequest {
+  metodoPagoId: number
+  precioFinal: number
+}
+
 export interface TurnoDto {
   id: number
-  estado: EstadoTurno
-  fecha: string
-  horaInicio: string
-  horaFin: string
-  clienteId: number
-  clienteNombre: string
+  salon: string
+  clienteId?: number
+  nombreCliente?: string
+  nombreAnonimo?: string
+  telefonoAnonimo?: string
   operarioId?: number
-  operarioNombre?: string
-  subservicioNombre: string
-  varianteNombre?: string
-  precio: number
-  creadoEn: string
+  nombreOperario: string
+  subservicioId: number
+  nombreSubservicio: string
+  nombreServicio: string
+  varianteId?: number
+  nombreVariante?: string
+  sesionId?: number
+  fechaHoraInicio: string
+  duracionMin: number
+  estado: EstadoTurno
+  motivoRechazo?: string
+  precioBase: number
+  porcentajeDescuento?: number
+  cuponId?: number
+  precioFinal?: number
+  metodoPagoId?: number
+  nombreMetodoPago?: string
+  comisionCalculada?: number
   notas?: string
+  creadoEn: string
+  actualizadoEn: string
 }
 
-export interface TurnoListResponse {
-  items: TurnoDto[]
-  total: number
+export interface SesionDto {
+  id: number
+  clienteId?: number
+  nombreCliente?: string
+  nombreAnonimo?: string
+  telefonoAnonimo?: string
+  operarioId: number
+  nombreOperario: string
+  salon: string
+  fechaHoraInicio: string
+  estado: string
+  descuentoAutoPct?: number
+  turnos: TurnoDto[]
+  creadoEn: string
 }
 
-// ─── Cupones ─────────────────────────────────────────────────────────────────
+export interface SlotOcupadoDto {
+  inicio: string
+  fin: string
+  estado: string
+}
+
+export interface DisponibilidadDto {
+  disponible: boolean
+  motivoNoDisponible?: string
+  slotsOcupados: SlotOcupadoDto[]
+  horariosDisponibles: string[]
+}
+
+// Cupones
 
 export interface CuponDto {
   id: number
   codigo: string
-  descuentoPorcentaje: number
+  descripcion?: string
+  tipoDescuento: string
+  valor: number
+  serviciosIds?: number[]
+  fechaDesde: string
+  fechaHasta: string
+  usosMaximos?: number
+  usosActuales: number
+  unUsoPorCliente: boolean
   activo: boolean
-  usoMaximo?: number
-  usoActual: number
-  vencimiento?: string
+  creadoEn: string
 }
 
-// ─── Operarios ───────────────────────────────────────────────────────────────
+// Operarios y disponibilidad
 
-export interface OperarioDto {
+export interface OperarioSubservicioDto {
   id: number
-  nombre: string
-  apellido: string
-  email: string
-  telefono?: string
-  avatarUrl?: string
-  activo: boolean
+  operarioId: number
+  subservicioId: number
+  nombreSubservicio: string
+  nombreServicio: string
+  porcentajeComision: number
 }
 
-// ─── Imputaciones ────────────────────────────────────────────────────────────
+export interface OperarioVistasDto {
+  id: number
+  operarioId: number
+  verMisTurnos: boolean
+  verMisComisiones: boolean
+  verMiCalificacion: boolean
+  verMisEstadisticas: boolean
+}
+
+export interface DisponibilidadSalonDto {
+  id: number
+  fecha: string
+  salon: string
+  motivoId: number
+  nombreMotivo: string
+  descripcion?: string
+  creadoPorId: number
+}
+
+export interface DisponibilidadOperarioDto {
+  id: number
+  operarioId: number
+  fecha: string
+  trabaja: boolean
+  motivoAusencia?: string
+}
+
+// Imputaciones y catálogos
 
 export interface ImputacionDto {
   id: number
-  concepto: string
-  monto: number
-  tipo: 'Ingreso' | 'Egreso'
   fecha: string
-  categoriaId?: number
-  categoriaNombre?: string
-  metodoPagoId?: number
-  metodoPagoNombre?: string
+  tipo: string
+  categoriaId: number
+  nombreCategoria: string
+  descripcion?: string
+  monto: number
+  turnoId?: number
   operarioId?: number
-  operarioNombre?: string
+  nombreOperario?: string
+  cargadoPorId: number
+  origen: string
+  creadoEn: string
 }
 
-// ─── Catálogos ───────────────────────────────────────────────────────────────
+export interface ResumenCategoriaDto {
+  nombreCategoria: string
+  tipo: string
+  total: number
+}
+
+export interface ResumenImputacionesDto {
+  totalIngresos: number
+  totalEgresos: number
+  balance: number
+  porCategoria: ResumenCategoriaDto[]
+}
 
 export interface CategoriaImputacionDto {
   id: number
   nombre: string
+  tipo: string
+  descripcion?: string
   activo: boolean
+  ordenDisplay: number
 }
 
 export interface MetodoPagoDto {
   id: number
   nombre: string
   activo: boolean
+  ordenDisplay: number
 }
 
-export interface MotivoBloqueoDto {
+export interface MotivoBloqueoSalonDto {
   id: number
   nombre: string
   activo: boolean
+  ordenDisplay: number
 }
 
-// ─── Dashboard ───────────────────────────────────────────────────────────────
+// Emails y calificaciones
 
-export interface KpisDto {
-  turnosHoy: number
-  ingresosHoy: number
-  egresosHoy: number
-  balanceHoy: number
-  calificacionPromedio?: number
+export interface ConfiguracionEmailDto {
+  id: number
+  recordatorioDiasAntes: number
+  postturnoHorasDespues: number
+  emailsActivos: boolean
+  actualizadoEn: string
 }
 
-export interface AlertaDto {
+export interface EmailEnviadoDto {
+  id: number
   tipo: string
-  mensaje: string
-  cantidad?: number
+  destinatario: string
+  turnoId?: number
+  usuarioId?: number
+  estado: string
+  errorDetalle?: string
+  enviadoEn: string
 }
 
-// ─── Calificaciones ──────────────────────────────────────────────────────────
+export interface CrearCalificacionRequest {
+  turnoId: number
+  puntuacion: number
+  comentario?: string
+}
 
 export interface CalificacionDto {
   id: number
   turnoId: number
+  clienteId: number
+  nombreCliente: string
   operarioId: number
-  operarioNombre: string
-  puntaje: number
+  nombreOperario: string
+  puntuacion: number
   comentario?: string
   creadoEn: string
 }
 
-// ─── Estadísticas ────────────────────────────────────────────────────────────
-
-export interface EstadisticasResumenDto {
-  turnosRealizados: number
-  ingresosTotal: number
-  egresosTotal: number
-  balance: number
-  distribucionEstados: Record<string, number>
+export interface PromedioCalificacionDto {
+  operarioId: number
+  nombreOperario: string
+  promedio: number
+  totalCalificaciones: number
 }
 
-// ─── API Response wrapper ────────────────────────────────────────────────────
+// Estadísticas, dashboard y comisiones
+
+export interface DistribucionEstadoDto {
+  estado: string
+  cantidad: number
+  porcentaje: number
+}
+
+export interface ResumenEstadisticasDto {
+  turnosHoy: number
+  turnosSemana: number
+  turnosMes: number
+  ingresosHoy: number
+  ingresosSemana: number
+  ingresosMes: number
+  egresosHoy: number
+  egresosSemana: number
+  egresosMes: number
+  balanceHoy: number
+  balanceSemana: number
+  balanceMes: number
+  promedioCalificacionGlobal: number
+  totalCalificaciones: number
+  turnosPorEstado: DistribucionEstadoDto[]
+}
+
+export interface PuntoEvolucionDto {
+  periodo: string
+  ingresos: number
+  egresos: number
+  balance: number
+}
+
+export interface ServicioRankingDto {
+  subservicioId: number
+  nombreServicio: string
+  nombreCategoria: string
+  cantidadTurnos: number
+  ingresoTotal: number
+}
+
+export interface OperariaEstadisticasDto {
+  operarioId: number
+  nombre: string
+  turnosMes: number
+  turnosRealizados: number
+  ingresosMes: number
+  comisionesMes: number
+  promedioCalificacion: number
+  totalCalificaciones: number
+}
+
+export interface OcupacionDiariaDto {
+  fecha: string
+  totalTurnos: number
+  turnosRealizados: number
+  turnosCancelados: number
+  turnosPendientes: number
+}
+
+export interface TurnosEstadisticasDto {
+  total: number
+  porEstado: DistribucionEstadoDto[]
+}
+
+export interface PromedioOperarioCalDto {
+  operarioId: number
+  nombre: string
+  promedio: number
+  total: number
+}
+
+export interface CalificacionesEstadisticasDto {
+  promedioGlobal: number
+  total: number
+  porOperario: PromedioOperarioCalDto[]
+}
+
+export interface AlertaDashboardDto {
+  tipo: string
+  mensaje: string
+  prioridad: string
+  cantidad?: number
+}
+
+export interface TurnoPendienteSinOperariaDto {
+  turnoId: number
+  clienteNombre: string
+  subservicioNombre: string
+  fechaHoraInicio: string
+  horasEnEspera: number
+}
+
+export interface DashboardAlertasDto {
+  alertas: AlertaDashboardDto[]
+  turnosPendientesSinOperaria: TurnoPendienteSinOperariaDto[]
+}
+
+export interface AgendaHoyItemDto {
+  turnoId: number
+  horaInicio: string
+  horaFin: string
+  cliente: string
+  operario: string
+  servicio: string
+  estado: string
+  precioFinal?: number
+}
+
+export interface ComisionDto {
+  id: number
+  operarioId: number
+  nombreOperario: string
+  turnoId?: number
+  monto: number
+  fecha: string
+  concepto: string
+}
+
+export interface ResumenComisionesDto {
+  operarioId: number
+  nombre: string
+  totalComisiones: number
+  comisiones: ComisionDto[]
+}
+
+// API wrapper
 
 export interface ApiResponse<T> {
   data: T

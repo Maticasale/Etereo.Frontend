@@ -2,7 +2,7 @@
 
 > Fuente de verdad compartida entre Backend (.NET Core) y Frontend Web (React).
 > Define el contrato de API, modelos, enums y convenciones de nombrado.
-> Última actualización: Mayo 2026 — v4: claims JWT corregidos (sexo+jti), accesos imputaciones corregidos, rutas email canonizadas, secciones 5.2-5.10 completadas con DTOs reales.
+> Última actualización: Mayo 2026 — v6: disponibilidad por subservicio/variante, background job de emails activo cada 15min, post-turno diferido por configuración, endpoint `/health` documentado.
 
 ---
 
@@ -192,6 +192,13 @@ Generados por `JwtService.GenerateAccessToken(Usuario)`:
 | POST | `/turnos/{id}/realizar` | Admin\|Operario |
 | POST | `/turnos/{id}/impago` | Admin\|Operario |
 | POST | `/turnos/{id}/publicidad` | Admin\|Operario |
+| PATCH | `/turnos/{id}/asignar-operaria` | Admin |
+
+`GET /turnos/disponibilidad` usa query params:
+- `fecha: string`
+- `subservicioId: number`
+- `varianteId?: number`
+- `duracionMin?: number`
 
 ### 4.7 Cupones
 
@@ -257,6 +264,12 @@ Generados por `JwtService.GenerateAccessToken(Usuario)`:
 | GET | `/estadisticas/ocupacion` | Admin | Ocupación diaria: turnos por día en un rango |
 | GET | `/comisiones` | Admin | Listado de comisiones (egresos vinculados a operarias) |
 | GET | `/comisiones/mi-resumen` | Operario | Resumen de comisiones propias |
+
+### 4.11 Infraestructura
+
+| Método | Ruta | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/health` | Anónimo | Healthcheck simple. Responde `{ data: "ok" }` |
 
 ---
 
@@ -347,22 +360,26 @@ DisponibilidadOperarioDto { id: number; operarioId: number; fecha: string; traba
 ```typescript
 // Requests
 CrearTurnoRequest         { clienteId?: number; nombreAnonimo?: string; telefonoAnonimo?: string;
-                            operarioId: number; subservicioId: number; varianteId?: number;
+                            subservicioId: number; varianteId?: number;
                             fechaHoraInicio: string; notas?: string; cuponId?: number }
+                            // operarioId ELIMINADO — el sistema auto-asigna
 CrearSesionRequest        { clienteId?: number; nombreAnonimo?: string; telefonoAnonimo?: string;
-                            operarioId: number; salon: string; fechaHoraInicio: string;
+                            operarioId?: number; salon: string; fechaHoraInicio: string;
                             zonas: { subservicioId: number; varianteId?: number }[] }
+AsignarOperariaRequest    { operarioId: number }
 RechazarTurnoRequest      { motivoRechazo: string }
 RealizarTurnoRequest      { metodoPagoId: number; precioFinal: number }
+TurnosDisponibilidadQuery { fecha: string; subservicioId: number; varianteId?: number; duracionMin?: number }
 
 // Responses
 TurnoDto {
   id: number; salon: string; clienteId?: number; nombreCliente?: string; nombreAnonimo?: string; telefonoAnonimo?: string;
-  operarioId: number; nombreOperario: string; subservicioId: number; nombreSubservicio: string; nombreServicio: string;
+  operarioId?: number; nombreOperario: string; subservicioId: number; nombreSubservicio: string; nombreServicio: string;
   varianteId?: number; nombreVariante?: string; sesionId?: number; fechaHoraInicio: string; duracionMin: number;
   estado: string; motivoRechazo?: string; precioBase: number; porcentajeDescuento?: number;
   cuponId?: number; precioFinal?: number; metodoPagoId?: number; nombreMetodoPago?: string;
   comisionCalculada?: number; notas?: string; creadoEn: string; actualizadoEn: string
+  // operarioId es int? (nullable) — null cuando hay múltiples operarias disponibles
 }
 SesionDto {
   id: number; clienteId?: number; nombreCliente?: string; nombreAnonimo?: string; telefonoAnonimo?: string;
@@ -482,9 +499,19 @@ CalificacionesEstadisticasDto {
 ```typescript
 // GET /dashboard/kpis → ResumenEstadisticasDto (mismo tipo que /estadisticas/resumen pero filtrado a hoy)
 
-// GET /dashboard/alertas → AlertaDashboardDto[]
+// GET /dashboard/alertas → DashboardAlertasDto
 AlertaDashboardDto { tipo: string; mensaje: string; prioridad: string; cantidad?: number }
-// tipo puede ser: "TURNOS_SIN_CONFIRMAR", "OPERARIO_SIN_TURNO", "BALANCE_NEGATIVO", etc.
+// tipo puede ser: "TURNOS_SIN_CONFIRMAR", "BALANCE_MES_NEGATIVO", "TURNOS_VENCIDOS_SIN_RESOLVER"
+
+TurnoPendienteSinOperariaDto {
+  turnoId: number; clienteNombre: string; subservicioNombre: string;
+  fechaHoraInicio: string; horasEnEspera: number
+}
+
+DashboardAlertasDto {
+  alertas: AlertaDashboardDto[];
+  turnosPendientesSinOperaria: TurnoPendienteSinOperariaDto[];
+}
 
 // GET /dashboard/agenda-hoy → AgendaHoyItemDto[]
 AgendaHoyItemDto { turnoId: number; horaInicio: string; horaFin: string; cliente: string;
@@ -591,6 +618,12 @@ Servicios/precios:    Ver DatabaseSeeder.cs (precios Marzo 2026)
 ## 9. Códigos de error
 
 Ver `ETEREO_BACKEND_SOT.md` sección 8 para la tabla completa de `ErrorCode` por módulo y sus HTTP status codes.
+
+**Errores nuevos — Turnos:**
+| Código | Status | Mensaje |
+|---|---|---|
+| `OPERARIA_NO_DISPONIBLE` | 409 | No hay operarias disponibles para ese horario y servicio |
+| `OPERARIA_NO_ASIGNADA` | 409 | Debés asignar una operaria antes de confirmar el turno |
 
 Regla general de mapeo status:
 - `4xx` error de negocio → `400` si no hay código más específico

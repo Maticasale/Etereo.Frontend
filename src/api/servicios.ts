@@ -1,6 +1,8 @@
-// servicios
 import apiClient from './client'
+import type { ServicioDto } from '@/types/api'
 
 export const serviciosApi = {
-  // TODO: implementar endpoints según ETEREO_CONTRATO_SOT.md
+  /** GET /servicios — Anónimo. Devuelve todos los servicios con sus subservicios. */
+  getServicios: (): Promise<ServicioDto[]> =>
+    apiClient.get<{ data: ServicioDto[] }>('/servicios').then((r) => r.data.data),
 }

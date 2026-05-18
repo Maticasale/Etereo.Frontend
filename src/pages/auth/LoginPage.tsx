@@ -8,6 +8,7 @@ import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
 import { getErrorCode } from '@/lib/errors'
+import type { LoginRequest } from '@/types/api'
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
@@ -129,7 +130,11 @@ export default function LoginPage() {
     setGlobalError(null)
     setIsLoading(true)
     try {
-      const { accessToken, refreshToken, usuario } = await authApi.login(values)
+      const payload: LoginRequest = {
+        email: values.email!,
+        password: values.password!,
+      }
+      const { accessToken, refreshToken, usuario } = await authApi.login(payload)
       setAuth(accessToken, refreshToken, usuario)
       toast.success(`¡Bienvenida, ${usuario.nombre}!`)
       redirectAfterLogin(usuario.rol, usuario.debeCambiarPassword)

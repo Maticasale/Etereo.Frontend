@@ -1,7 +1,8 @@
 # Etereo Frontend — Source of Truth
 
 > Documento técnico maestro del frontend. Refleja el diseño acordado del sistema de gestión de la estética Etereo.
-> Última actualización: Mayo 2026 — v4: LoginPage split atmosférico (Great Vibes + hojas botánicas), ReservaTurnoModal, hook useReservaTurno, flujo redirect post-login.
+> Combina estado actual del código + comportamiento objetivo cuando un módulo todavía no fue implementado por completo.
+> Última actualización: Mayo 2026 — v6: Landing pública, PublicLayout, tipados alineados con backend y convención explícita de estado por módulo.
 
 ---
 
@@ -43,6 +44,16 @@ tailwindcss@4, lucide-react, recharts, date-fns,
 | `VITE_GOOGLE_CLIENT_ID` | En `.env.local` (no commitear) |
 
 El proxy de Vite en dev mapea `/api/*` → `https://etereobackend-production.up.railway.app/api/*`.
+
+### Convención de estado en este SOT
+
+Este documento puede describir tanto funcionalidades ya presentes en el código como funcionalidades objetivo todavía no implementadas por completo.
+
+| Estado | Significado |
+|---|---|
+| **Implementado** | Existe en el código actual y forma parte del comportamiento real de la app |
+| **Parcial** | Existe una parte del flujo, layout o integración, pero no el módulo completo |
+| **Pendiente** | Es comportamiento objetivo acordado, pero todavía no está implementado en React |
 
 ---
 
@@ -96,6 +107,10 @@ El proxy de Vite en dev mapea `/api/*` → `https://etereobackend-production.up.
 
 ## 2. Estructura de carpetas
 
+> Estado general: **Parcial**
+>
+> La estructura de carpetas principal existe y el routing base está montado, pero varios módulos todavía son placeholders o stubs.
+
 ```
 etereo-frontend/
 ├── public/
@@ -121,15 +136,15 @@ etereo-frontend/
 │   │   │   ├── toast-container.tsx
 │   │   │   └── sparkline.tsx       — Mini gráfico reutilizable para KPIs
 │   │   ├── layout/
-│   │   │   ├── AppLayout.tsx       — Sidebar + Header + <Outlet />
-│   │   │   ├── Sidebar.tsx         — Nav filtrado por rol y vistas habilitadas
-│   │   │   └── Header.tsx          — Saludo + selector de período + avatar + logout
+│   │   │   ├── AppLayout.tsx       — Sidebar + Header + <Outlet /> [Implementado]
+│   │   │   ├── Sidebar.tsx         — Nav filtrado por rol y vistas habilitadas [Implementado]
+│   │   │   ├── Header.tsx          — Header panel interno [Implementado]
+│   │   │   ├── PublicLayout.tsx    — Layout de rutas públicas [Implementado]
+│   │   │   └── PublicHeader.tsx    — Header fijo de landing pública [Implementado]
 │   │   └── shared/
-│   │       ├── RolGuard.tsx        — Renderiza según rol del usuario
-│   │       ├── PageHeader.tsx
-│   │       ├── DataTable.tsx       — Tabla genérica con loading/empty/paginación
-│   │       ├── PeriodSelector.tsx  — Selector semana/mes/custom para KPIs
-│   │       └── WhatsAppButton.tsx  — Genera link wa.me pre-armado
+│   │       ├── RolGuard.tsx        — Renderiza según rol del usuario [Implementado]
+│   │       ├── PageHeader.tsx      — Encabezado simple reutilizable [Implementado]
+│   │       └── ReservaTurnoModal.tsx — Modal de entrada al flujo de reserva [Implementado]
 │   │
 │   ├── hooks/
 │   │   ├── useAuth.ts
@@ -143,52 +158,58 @@ etereo-frontend/
 │   │
 │   ├── pages/
 │   │   ├── auth/
-│   │   │   └── LoginPage.tsx       — Login + Registro + Google OAuth
+│   │   │   ├── LoginPage.tsx       — Login con Google OAuth + redirect post-auth [Implementado]
+│   │   │   ├── RegistroPage.tsx    — Ruta existente, contenido todavía placeholder [Parcial]
+│   │   │   └── CambiarPasswordPage.tsx — Ruta existente, contenido todavía placeholder [Parcial]
 │   │   ├── portal/                 — Vistas del cliente (público)
-│   │   │   ├── ReservaTurnoPage.tsx  — Wizard de reserva
-│   │   │   ├── MisTurnosPage.tsx
-│   │   │   ├── MisCuponesPage.tsx
-│   │   │   └── MiPerfilPage.tsx
+│   │   │   ├── ReservaTurnoPage.tsx  — Ruta del wizard; contenido actual placeholder [Parcial]
+│   │   │   ├── MisTurnosPage.tsx     — Ruta existente, contenido placeholder [Parcial]
+│   │   │   ├── MisCuponesPage.tsx    — Ruta existente, contenido placeholder [Parcial]
+│   │   │   └── MiPerfilPage.tsx      — Ruta existente, contenido placeholder [Parcial]
+│   │   ├── public/
+│   │   │   ├── LandingPage.tsx       — Página principal pública [Implementado]
+│   │   │   └── landing/              — Secciones de la landing [Implementado]
 │   │   ├── dashboard/
-│   │   │   └── DashboardPage.tsx   — KPIs + gráficas + alertas (Admin)
+│   │   │   └── DashboardPage.tsx   — Ruta existente; módulo de KPIs y gráficas pendiente [Parcial]
 │   │   ├── agenda/
-│   │   │   └── AgendaPage.tsx      — Calendario FullCalendar (Admin + Operario)
+│   │   │   └── AgendaPage.tsx      — Ruta existente; FullCalendar pendiente [Parcial]
 │   │   ├── turnos/
-│   │   │   ├── TurnosPage.tsx      — Lista con filtros (Admin + Operario)
-│   │   │   └── TurnoDetallePage.tsx
+│   │   │   ├── TurnosPage.tsx      — Ruta existente; lista y acciones pendientes [Parcial]
+│   │   │   └── TurnoDetallePage.tsx — Ruta existente; detalle pendiente [Parcial]
 │   │   ├── servicios/
-│   │   │   └── ServiciosPage.tsx   — CRUD servicios y subservicios (Admin)
+│   │   │   └── ServiciosPage.tsx   — CRUD admin pendiente [Parcial]
 │   │   ├── operarios/
-│   │   │   ├── OperariosPage.tsx   — CRUD operarios (Admin)
-│   │   │   └── OperarioDetallePage.tsx — Subservicios + comisiones + vistas
+│   │   │   ├── OperariosPage.tsx   — CRUD operarios pendiente [Parcial]
+│   │   │   └── OperarioDetallePage.tsx — Detalle pendiente [Parcial]
 │   │   ├── clientes/
-│   │   │   └── ClientesPage.tsx    — Búsqueda y alta manual (Admin + Operario)
+│   │   │   └── ClientesPage.tsx    — Búsqueda y alta manual pendiente [Parcial]
 │   │   ├── cupones/
-│   │   │   └── CuponesPage.tsx     — CRUD cupones (Admin)
+│   │   │   └── CuponesPage.tsx     — CRUD pendiente [Parcial]
 │   │   ├── imputaciones/
-│   │   │   ├── ImputacionesPage.tsx
+│   │   │   ├── ImputacionesPage.tsx — Módulo pendiente [Parcial]
 │   │   │   └── catalogos/
-│   │   │       ├── CategoriasPage.tsx
-│   │   │       ├── MetodosPagoPage.tsx
-│   │   │       └── MotivosBloqueoPage.tsx
+│   │   │       ├── CategoriasPage.tsx      — Pendiente [Parcial]
+│   │   │       ├── MetodosPagoPage.tsx     — Pendiente [Parcial]
+│   │   │       └── MotivosBloqueoPage.tsx  — Pendiente [Parcial]
 │   │   ├── estadisticas/
-│   │   │   └── EstadisticasPage.tsx — Gráficas detalladas (Admin)
+│   │   │   └── EstadisticasPage.tsx — Gráficas detalladas pendientes [Parcial]
 │   │   ├── comisiones/
-│   │   │   ├── ComisionesPage.tsx   — Vista Admin: resumen a liquidar
-│   │   │   └── MisComisionesPage.tsx — Vista Operario: sus propias comisiones
+│   │   │   ├── ComisionesPage.tsx   — Vista admin pendiente [Parcial]
+│   │   │   └── MisComisionesPage.tsx — Vista operaria pendiente [Parcial]
 │   │   ├── calificaciones/
-│   │   │   ├── CalificacionesPage.tsx  — Admin
-│   │   │   └── CalificarPage.tsx       — Página pública (desde link del email)
+│   │   │   ├── CalificacionesPage.tsx  — Vista admin pendiente [Parcial]
+│   │   │   └── CalificarPage.tsx       — Ruta pública existente; formulario real pendiente [Parcial]
 │   │   ├── disponibilidad/
-│   │   │   └── DisponibilidadPage.tsx  — Salón + operarias (Admin + Operario)
+│   │   │   └── DisponibilidadPage.tsx  — Módulo pendiente [Parcial]
 │   │   └── config/
-│   │       └── ConfigEmailPage.tsx     — Admin
+│   │       └── ConfigEmailPage.tsx     — Config admin pendiente [Parcial]
 │   │
 │   ├── store/
-│   │   └── authStore.ts
+│   │   ├── authStore.ts           — Auth Zustand [Implementado]
+│   │   └── toastStore.ts          — Toasts Zustand [Implementado]
 │   │
 │   ├── types/
-│   │   └── api.ts                  — Todos los DTOs tipados
+│   │   └── api.ts                  — DTOs tipados alineados con backend [Implementado]
 │   │
 │   ├── App.tsx
 │   ├── main.tsx
@@ -237,21 +258,28 @@ El Sidebar filtra automáticamente los items del menú según el rol del usuario
 
 ## 4. Vistas
 
+> Estado general: **Parcial**
+>
+> El routing principal ya existe y separa correctamente rutas públicas, auth, cliente y panel interno.
+> Lo que todavía no está completo es el contenido funcional de muchos módulos internos.
+
 ### Portal del cliente (público o registrado)
 
 | Ruta | Componente | Acceso |
 |---|---|---|
-| `/` | `ReservaTurnoPage` | Público |
+| `/` | `LandingPage` | Público |
+| `/reservar` | `ReservaTurnoPage` | Público |
 | `/mis-turnos` | `MisTurnosPage` | Cliente |
 | `/mis-cupones` | `MisCuponesPage` | Cliente |
 | `/mi-perfil` | `MiPerfilPage` | Cliente |
-| `/calificar` | `CalificarPage` | Anónimo con token del email |
+| `/calificar` | `CalificarPage` | Público con token JWT del link; POST final requiere auth backend |
 
 ### Panel interno (Admin + Operario)
 
 | Ruta | Componente | Acceso | Descripción |
 |---|---|---|---|
-| `/panel` | `DashboardPage` | Admin | KPIs + gráficas + alertas |
+| `/panel` | `PanelRedirect` | Admin\|Operario | Redirección por rol |
+| `/panel/dashboard` | `DashboardPage` | Admin | KPIs + gráficas + alertas |
 | `/panel/agenda` | `AgendaPage` | Admin\|Operario | Calendario FullCalendar |
 | `/panel/turnos` | `TurnosPage` | Admin\|Operario | Lista con filtros |
 | `/panel/turnos/:id` | `TurnoDetallePage` | Admin\|Operario | Detalle + acciones |
@@ -279,6 +307,11 @@ El Sidebar filtra automáticamente los items del menú según el rol del usuario
 ---
 
 ## 5. Flujo de reserva de turno (portal cliente)
+
+> Estado: **Pendiente**
+>
+> La ruta `/reservar` ya existe y el backend necesario también, pero el wizard detallado de esta sección todavía no está implementado en React.
+> Esta sección describe el comportamiento objetivo acordado para cuando se construya el módulo completo.
 
 Wizard de pasos en `ReservaTurnoPage`. El número de pasos varía según el tipo de servicio:
 
@@ -337,6 +370,11 @@ Paso 7 — Confirmar datos
 
 ## 6. Dashboard Admin — KPIs y gráficas
 
+> Estado: **Pendiente**
+>
+> La ruta admin existe, pero este módulo todavía no está implementado en el frontend actual.
+> Esta sección se mantiene como diseño funcional objetivo sincronizado con el backend disponible.
+
 ### Selector de período
 ```typescript
 // PeriodSelector.tsx — siempre visible en el header del dashboard
@@ -389,6 +427,10 @@ Cada KPI muestra: valor actual, valor período anterior, delta % con flecha (↑
 
 ## 7. Vista de Operaria — según vistas habilitadas
 
+> Estado: **Pendiente**
+>
+> El filtrado base de navegación por rol/vistas ya existe en Sidebar, pero las vistas específicas de operaria descriptas acá todavía no están desarrolladas por completo.
+
 El Sidebar de operaria solo muestra las secciones que Tamara habilitó en `operario_vistas`:
 
 | Sección | Default | Ruta |
@@ -415,6 +457,10 @@ Total: 8 turnos | Ingresos generados: $185.400 | Mi comisión: $83.430
 ---
 
 ## 8. Componente WhatsApp
+
+> Estado: **Parcial**
+>
+> Hoy existe `lib/whatsapp.ts` con utilidades base, pero el componente visual reutilizable `WhatsAppButton` todavía no está creado en el repo.
 
 ```typescript
 // lib/whatsapp.ts
@@ -443,6 +489,11 @@ export const waTemplates = {
 ---
 
 ## 9. Componentes reutilizables clave
+
+> Estado: **Parcial**
+>
+> En el código actual existen `RolGuard`, `PageHeader`, primitives UI, `ReservaTurnoModal`, `useReservaTurno` y layouts.
+> Los componentes listados abajo como `DataTable`, `PeriodSelector`, `KpiCard` y `EstadoBadge` pertenecen al diseño objetivo y todavía no existen implementados en este repo.
 
 ### `<DataTable<T> />`
 Tabla genérica con loading, empty state y paginación opcional.
@@ -557,6 +608,11 @@ En dev, `vite.config.ts` proxea `/api` al backend local.
 
 ## 13. Flujo de autenticación del cliente
 
+> Estado general: **Parcial**
+>
+> El entrypoint desde landing, `ReservaTurnoModal`, `useReservaTurno`, `LoginPage` y el redirect post-auth están implementados.
+> Registro, cambio de contraseña y wizard final de reserva todavía no están completos en UI.
+
 ### Flujo de entrada
 
 ```
@@ -589,12 +645,136 @@ Post ?iniciar_reserva=1 en URL     → useReservaTurno detecta, limpia URL, setW
 - **`useReservaTurno`** — en `useEffect([], [])` detecta `?iniciar_reserva=1`, hace `setSearchParams({}, { replace: true })` para limpiar la URL del historial y pone `wizardOpen = true`.
 - El modal **nunca** se muestra si `usuario !== null` — la lógica de apertura vive 100% en `handleReservarTurno()`.
 
+### Estado actual del código
+
+- `LoginPage` está implementada y funcional con Google OAuth, manejo de errores y redirect post-auth.
+- `RegistroPage` y `CambiarPasswordPage` existen como rutas, pero todavía están en placeholder.
+- `ReservaTurnoModal` y `PublicLayout` ya disparan correctamente el flujo hacia `/login`, `/registro` o `/reservar`.
+
 ### LoginPage — diseño visual
 
 Layout split 2 columnas (`1.05fr 1fr`, `100vw × 100vh`):
 - **Panel izquierdo** (dark): fondo `linear-gradient(#5a4530 → #4A3728 → #2a1d12)` + SVG botánico inline (24+18 elipses doradas generadas con `.map()`) + logo "Etéreo" en Great Vibes 168px + cita en Cormorant Garamond italic.
 - **Panel derecho** (cream `--color-tertiary`): eyebrow dorado + h1 "Bienvenido." en Cormorant Garamond 56px + inputs underline-only (`SplitInput` local, no usa el `<Input>` global) + botón sin border-radius + Google OAuth.
 - La lógica funcional (RHF/Zod, API calls, redirect por rol, Google OAuth) es idéntica a la versión anterior.
+
+---
+
+## 14. LandingPage y PublicLayout
+
+> Agregado: Mayo 2026 — v5: Landing pública (HeroSection, ServiciosSection, CalificacionesSection, FooterSection), PublicLayout, PublicHeader, routing público separado del AppLayout.
+>
+> Estado general: **Implementado**
+>
+> La landing pública, su layout, el header fijo y el flujo de entrada a reserva ya existen en el código actual.
+> La única excepción relevante es que la sección de calificaciones sigue usando datos mockeados hasta exponer el endpoint público necesario.
+
+### Arquitectura de archivos
+
+```
+src/components/layout/
+  ├── PublicLayout.tsx       — layout para rutas públicas (header + outlet + modal)
+  └── PublicHeader.tsx       — header fijo con scroll detection, logo y CTAs
+
+src/pages/public/
+  └── LandingPage.tsx        — página principal pública
+src/pages/public/landing/
+  ├── HeroSection.tsx        — 100vh, hero oscuro, botánicas SVG, wordmark + CTAs
+  ├── ServiciosSection.tsx   — grid de servicios con datos reales del API
+  ├── CalificacionesSection.tsx — promedio + reviews + "Por qué elegirnos"
+  └── FooterSection.tsx      — marca, navegación, contacto, copyright
+
+src/api/servicios.ts         — getServicios() implementado (anónimo)
+src/api/estadisticas.ts      — helper admin-only + TODO para endpoint público de calificaciones
+```
+
+### PublicLayout
+
+- Renderiza `<PublicHeader />` + `<Outlet />`. Sin Sidebar.
+- Contiene el estado del `ReservaTurnoModal` y el handler `handleReservarTurno`.
+- Pasa el handler a `<PublicHeader onReservar={...} />` por props.
+- Pasa el handler a rutas hijas vía `<Outlet context={{ onReservar }} />` (tipo `PublicOutletContext`).
+- Los hijos acceden con `useOutletContext<PublicOutletContext>()`.
+- Logueado → `navigate('/reservar')`. No logueado → `ReservaTurnoModal`. `onAnonimo` → `navigate('/reservar')`.
+
+### PublicHeader
+
+- `position: fixed`, `z-index: 100`, `height: 68px`.
+- **Transparente** (scrollY < 60px): fondo `transparent`, wordmark blanco.
+- **Sólido** (scrollY ≥ 60px): `rgba(74,55,40,0.96)` + `backdrop-blur(12px)` + wordmark `var(--color-secondary)`.
+- Desktop (`≥ sm`): botón ghost `[Ingresar]` + botón dorado `[Reservar turno]`.
+- Mobile (`< sm`): link texto "Ingresar" + botón compacto dorado "Reservar".
+
+### Secciones de la Landing
+
+#### HeroSection
+- `minHeight: 100vh`, `background: linear-gradient(#5a4530 → #4A3728 → #2a1d12)`.
+- SVG botánico inline (dos ramas, izquierda + derecha), mismo patrón que LoginPage, opacidad 0.38.
+- Wordmark "etereo" Great Vibes 64px mobile / 96px desktop, `color: #C5A059`.
+- Tagline Playfair Display italic: "Belleza, cuidado y bienestar en San Francisco".
+- Botones pill: `[Reservar mi turno]` (dorado) + `[Ingresar]` (ghost blanco). `flex-col sm:flex-row`.
+- Scroll indicator SVG con `@keyframes heroScrollBounce`. Desaparece al scrollear >80px.
+
+#### ServiciosSection
+- `background: var(--color-tertiary)`, `padding: 80px 0`.
+- **Query:** `useQuery(['servicios', 'landing'], serviciosApi.getServicios, { staleTime: 10min })`.
+- Grid `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`. Loading: 6 skeletons con `@keyframes skeletonPulse`.
+- Precio "desde": `Math.min(...subservicios.filter(s => s.activo).map(s => s.precio))`.
+- Íconos lucide: Zap (Láser), Leaf (Descartable), HeartHandshake (Masajes), Eye (Cejas & Pestañas), Flower2 (Facial), Scissors (Peluquería), Sparkles (default). Búsqueda parcial por `nombre.includes(key)`.
+
+#### CalificacionesSection
+- `background: var(--color-primary)`, fondo oscuro. SVG botánico en esquina derecha, opacidad 0.18.
+- Sub A: promedio global (80px dorado) + `StarRating` SVG con relleno parcial via `clipPath`.
+- Reviews: grid `grid-cols-1 md:grid-cols-3`. Cards con `rgba(255,255,255,0.07)` + borde sutil.
+- Sub B bullets "Por qué elegirnos": íconos Award, Sparkles, ShieldCheck. `flex-col md:flex-row`.
+- **⚠️ Datos mockeados.** Ver TODO en el archivo y en la sección de pendientes.
+
+#### FooterSection
+- `background: #2a1d12`, `padding: 64px 0 0`.
+- Grid `grid-cols-1 md:grid-cols-3`. Col 1: marca + redes. Col 2: navegación. Col 3: contacto.
+- Copyright: "© 2026 Etereo. Todos los derechos reservados."
+
+### Routing (App.tsx)
+
+```tsx
+// Rutas con PublicLayout (PublicHeader fijo + outlet)
+<Route element={<PublicLayout />}>
+  <Route path="/" element={<LandingPage />} />
+  <Route path="/reservar" element={<ReservaTurnoPage />} />
+</Route>
+
+// Auth — layout visual propio, SIN PublicHeader
+<Route path="/login" element={<LoginPage />} />
+<Route path="/registro" element={<RegistroPage />} />
+<Route path="/cambiar-password" element={<CambiarPasswordPage />} />
+<Route path="/calificar" element={<CalificarPage />} />
+```
+
+LoginPage tiene layout split 2 columnas propio; va fuera del PublicLayout.
+
+### Flujo post-auth redirect
+
+1. `/login?redirect=reserva` → login → `navigate('/?iniciar_reserva=1', { replace })`
+2. `LandingPage` detecta `?iniciar_reserva=1` en `useEffect` → `navigate('/reservar', { replace })`
+3. `ReservaTurnoPage` carga. Compatible con `PostAuthRedirectHandler` (safety-net en App.tsx).
+
+### TODO pendiente de Backend
+
+```
+⚠️  GET /estadisticas/calificaciones requiere rol Admin.
+    Crear: GET /estadisticas/calificaciones/publico  (acceso anónimo)
+    Response: { promedioGlobal: number, total: number, ultimasCalificaciones: CalificacionDto[] }
+    Cuando esté disponible:
+      - CalificacionesSection.tsx: reemplazar MOCK_DATA con useQuery(['calificaciones', 'landing'])
+      - staleTime: 5 * 60 * 1000
+```
+
+### Estado actual resumido
+
+- `LandingPage`, `HeroSection`, `ServiciosSection`, `CalificacionesSection` y `FooterSection` existen y renderizan.
+- `ServiciosSection` consume `GET /servicios` real.
+- `CalificacionesSection` todavía usa mocks porque no existe endpoint público específico.
+- El redirect `/login?redirect=reserva` → `/?iniciar_reserva=1` → `/reservar` ya funciona.
 
 ---
 
