@@ -1,78 +1,67 @@
-/**
- * HeroSection
- *
- * Sección 1 de la LandingPage. 100vh, fondo oscuro marrón-dorado con decoración
- * botánica SVG inline (adaptada de LoginPage). Wordmark "etereo" + tagline + CTAs.
- */
-
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ArrowDown, CalendarHeart, Clock3, Leaf, MapPin, Sparkles } from 'lucide-react'
+import LandingReveal from './LandingReveal'
 
-// ─── Decoración botánica SVG ──────────────────────────────────────────────────
+interface HeroSectionProps {
+  onReservar: () => void
+}
 
-function HeroBotanicalSVG() {
+function BotanicalBackdrop() {
   return (
     <svg
-      viewBox="0 0 1400 900"
+      viewBox="0 0 1600 960"
       preserveAspectRatio="xMidYMid slice"
-      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.38, pointerEvents: 'none' }}
+      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
       aria-hidden="true"
     >
       <defs>
-        <linearGradient id="heroLeafGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="rgba(197,160,89,0.65)" />
-          <stop offset="100%" stopColor="rgba(197,160,89,0.04)" />
+        <linearGradient id="heroLeafPremium" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="rgba(233,205,140,0.55)" />
+          <stop offset="100%" stopColor="rgba(233,205,140,0.03)" />
         </linearGradient>
+        <radialGradient id="heroGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="rgba(249,245,240,0.16)" />
+          <stop offset="100%" stopColor="rgba(249,245,240,0)" />
+        </radialGradient>
       </defs>
-      <g fill="url(#heroLeafGrad)" stroke="rgba(197,160,89,0.35)" strokeWidth="0.7">
-        {/* Tallo izquierdo */}
-        <path d="M 30 -20 Q 15 220 20 450 T 10 930" fill="none" stroke="rgba(197,160,89,0.28)" strokeWidth="1" />
-        <path d="M 60 -10 Q 50 240 55 470 T 40 930" fill="none" stroke="rgba(197,160,89,0.2)" strokeWidth="0.8" />
-        {/* Hojas izquierda */}
-        {Array.from({ length: 22 }).map((_, i) => {
-          const y = 10 + i * 42
-          const x = 35 + Math.sin(i * 0.55) * 45
-          const rot = -38 + (i % 2 ? 72 : -12)
-          const ry = 26 + (i % 3) * 7
+
+      <ellipse cx="1200" cy="160" rx="420" ry="220" fill="url(#heroGlow)" opacity="0.72" />
+      <ellipse cx="260" cy="760" rx="340" ry="180" fill="url(#heroGlow)" opacity="0.28" />
+
+      <g fill="url(#heroLeafPremium)" stroke="rgba(223,195,134,0.22)" strokeWidth="0.85">
+        <path d="M 55 -20 Q 20 260 40 520 T 18 1040" fill="none" stroke="rgba(223,195,134,0.24)" />
+        <path d="M 1510 -20 Q 1550 220 1530 530 T 1585 1040" fill="none" stroke="rgba(223,195,134,0.22)" />
+
+        {Array.from({ length: 24 }).map((_, index) => {
+          const y = 28 + index * 37
+          const x = 58 + Math.sin(index * 0.55) * 52
+          const rot = -42 + (index % 2 ? 70 : -14)
           return (
-            <ellipse key={`hl${i}`} cx={x} cy={y} rx={5} ry={ry}
-              transform={`rotate(${rot} ${x} ${y})`} />
+            <ellipse
+              key={`left-${index}`}
+              cx={x}
+              cy={y}
+              rx="5"
+              ry={24 + (index % 3) * 8}
+              transform={`rotate(${rot} ${x} ${y})`}
+            />
           )
         })}
-        {/* Segunda rama izquierda (más alejada del borde) */}
-        {Array.from({ length: 16 }).map((_, i) => {
-          const y = 80 + i * 52
-          const x = 80 + Math.cos(i * 0.7) * 30
-          const rot = 22 + (i % 2 ? -55 : 48)
-          const ry = 22 + (i % 3) * 5
+
+        {Array.from({ length: 22 }).map((_, index) => {
+          const y = 22 + index * 39
+          const x = 1535 + Math.cos(index * 0.62) * 46
+          const rot = 38 + (index % 2 ? -64 : 44)
           return (
-            <ellipse key={`hl2${i}`} cx={x} cy={y} rx={4} ry={ry}
-              transform={`rotate(${rot} ${x} ${y})`} />
-          )
-        })}
-        {/* Tallo derecho */}
-        <path d="M 1370 -20 Q 1385 220 1380 450 T 1390 930" fill="none" stroke="rgba(197,160,89,0.28)" strokeWidth="1" />
-        <path d="M 1340 -10 Q 1350 240 1345 470 T 1360 930" fill="none" stroke="rgba(197,160,89,0.2)" strokeWidth="0.8" />
-        {/* Hojas derecha */}
-        {Array.from({ length: 24 }).map((_, i) => {
-          const y = 20 + i * 38
-          const x = 1368 + Math.cos(i * 0.5) * 38
-          const rot = 35 + (i % 2 ? -65 : 55)
-          const ry = 24 + (i % 3) * 8
-          return (
-            <ellipse key={`hr${i}`} cx={x} cy={y} rx={5} ry={ry}
-              transform={`rotate(${rot} ${x} ${y})`} />
-          )
-        })}
-        {/* Segunda rama derecha */}
-        {Array.from({ length: 14 }).map((_, i) => {
-          const y = 60 + i * 58
-          const x = 1320 + Math.sin(i * 0.6) * 28
-          const rot = -28 + (i % 2 ? 62 : -42)
-          const ry = 20 + (i % 3) * 6
-          return (
-            <ellipse key={`hr2${i}`} cx={x} cy={y} rx={4} ry={ry}
-              transform={`rotate(${rot} ${x} ${y})`} />
+            <ellipse
+              key={`right-${index}`}
+              cx={x}
+              cy={y}
+              rx="5"
+              ry={24 + (index % 3) * 8}
+              transform={`rotate(${rot} ${x} ${y})`}
+            />
           )
         })}
       </g>
@@ -80,217 +69,476 @@ function HeroBotanicalSVG() {
   )
 }
 
-// ─── Indicador de scroll ──────────────────────────────────────────────────────
-
-function ScrollIndicator({ visible }: { visible: boolean }) {
+function HeroEditorialCard({
+  eyebrow,
+  title,
+  body,
+}: {
+  eyebrow: string
+  title: string
+  body: string
+}) {
   return (
     <div
-      aria-hidden="true"
+      className="landing-premium-surface"
       style={{
-        position: 'absolute',
-        bottom: 36,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 4,
-        opacity: visible ? 1 : 0,
-        transition: 'opacity 0.4s ease',
-        pointerEvents: 'none',
+        borderRadius: 26,
+        padding: 24,
+        background: 'linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.06) 100%)',
+        border: '1px solid rgba(255,255,255,0.12)',
+        boxShadow: '0 18px 36px rgba(15,10,7,0.14)',
+        transition: 'transform 260ms ease, box-shadow 260ms ease, border-color 260ms ease',
       }}
     >
-      <span style={{
-        fontSize: 9,
-        letterSpacing: '0.3em',
-        textTransform: 'uppercase',
-        color: 'rgba(197,160,89,0.7)',
-        fontFamily: 'var(--font-body)',
-        fontWeight: 500,
-      }}>
-        Scroll
-      </span>
-      <svg
-        width="20"
-        height="28"
-        viewBox="0 0 20 28"
-        fill="none"
-        style={{ animation: 'heroScrollBounce 1.6s ease-in-out infinite' }}
+      <div
+        style={{
+          fontFamily: 'var(--font-body)',
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: '0.24em',
+          textTransform: 'uppercase',
+          color: 'rgba(197,160,89,0.9)',
+          marginBottom: 10,
+        }}
       >
-        <path d="M10 0 L10 20 M4 14 L10 20 L16 14" stroke="#C5A059" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+        {eyebrow}
+      </div>
+      <h3
+        style={{
+          fontFamily: 'var(--font-heading)',
+          fontSize: 25,
+          lineHeight: 1.08,
+          color: 'var(--color-tertiary)',
+          marginBottom: 12,
+        }}
+      >
+        {title}
+      </h3>
+      <p
+        style={{
+          fontFamily: 'var(--font-body)',
+          fontSize: 14,
+          lineHeight: 1.7,
+          color: 'rgba(255,255,255,0.72)',
+        }}
+      >
+        {body}
+      </p>
     </div>
   )
 }
 
-// ─── Props ────────────────────────────────────────────────────────────────────
-
-interface HeroSectionProps {
-  onReservar: () => void
+function ScrollCue({ visible }: { visible: boolean }) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: '50%',
+        bottom: 22,
+        transform: 'translateX(-50%)',
+        opacity: visible ? 1 : 0,
+        transition: 'opacity 0.25s ease',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 8,
+        pointerEvents: 'none',
+      }}
+    >
+      <div
+        style={{
+          fontFamily: 'var(--font-body)',
+          fontSize: 10,
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          letterSpacing: '0.28em',
+          color: 'rgba(197,160,89,0.72)',
+        }}
+      >
+        Descubrí
+      </div>
+      <ArrowDown
+        size={18}
+        color="#d9bb76"
+        style={{ animation: 'heroFloatDown 1.8s ease-in-out infinite' }}
+      />
+    </div>
+  )
 }
-
-// ─── Componente ───────────────────────────────────────────────────────────────
 
 export default function HeroSection({ onReservar }: HeroSectionProps) {
   const navigate = useNavigate()
-  const [showScroll, setShowScroll] = useState(true)
+  const [showCue, setShowCue] = useState(true)
 
   useEffect(() => {
-    const handler = () => setShowScroll(window.scrollY < 80)
-    window.addEventListener('scroll', handler, { passive: true })
-    return () => window.removeEventListener('scroll', handler)
+    const handleScroll = () => setShowCue(window.scrollY < 72)
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
   return (
     <section
       style={{
         position: 'relative',
-        width: '100%',
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
         overflow: 'hidden',
+        minHeight: '100vh',
         background: `
-          radial-gradient(ellipse at 20% 85%, rgba(197,160,89,0.18) 0%, transparent 50%),
-          radial-gradient(ellipse at 80% 15%, rgba(249,245,240,0.05) 0%, transparent 55%),
-          linear-gradient(180deg, #5a4530 0%, #4A3728 55%, #2a1d12 100%)
+          radial-gradient(circle at 18% 78%, rgba(197,160,89,0.17) 0%, transparent 32%),
+          radial-gradient(circle at 78% 20%, rgba(249,245,240,0.16) 0%, transparent 28%),
+          linear-gradient(145deg, #2d2119 0%, #4A3728 42%, #3a2c23 70%, #241913 100%)
         `,
       }}
     >
-      <HeroBotanicalSVG />
+      <BotanicalBackdrop />
 
-      {/* Overlay superior sutil */}
-      <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0, height: 200,
-        background: 'linear-gradient(180deg, rgba(0,0,0,0.25) 0%, transparent 100%)',
-        pointerEvents: 'none',
-      }} />
-
-      {/* ── Contenido ── */}
-      <div style={{
-        position: 'relative',
-        zIndex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        textAlign: 'center',
-        maxWidth: 640,
-        padding: '0 24px',
-        gap: 0,
-      }}>
-        {/* Wordmark */}
-        <span style={{
-          fontFamily: 'var(--font-display)',
-          color: '#C5A059',
-          fontWeight: 400,
-          lineHeight: 1,
-          display: 'block',
-          textShadow: '0 4px 40px rgba(0,0,0,0.4)',
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'linear-gradient(180deg, rgba(18,12,8,0.3) 0%, rgba(18,12,8,0) 24%, rgba(18,12,8,0.28) 100%)',
+          pointerEvents: 'none',
         }}
-          className="text-[64px] md:text-[96px]"
-        >
-          etereo
-        </span>
+      />
 
-        {/* Tagline */}
-        <p style={{
-          marginTop: 20,
-          fontFamily: 'var(--font-heading)',
-          fontStyle: 'italic',
-          color: 'rgba(255,255,255,0.82)',
-          lineHeight: 1.5,
-          fontWeight: 400,
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          maxWidth: 1240,
+          margin: '0 auto',
+          padding: '136px 24px 84px',
+          minHeight: '100vh',
+          display: 'grid',
+          alignItems: 'center',
         }}
-          className="text-base md:text-[22px]"
-        >
-          Belleza, cuidado y bienestar en San Francisco
-        </p>
+        className="grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] gap-12 lg:gap-10"
+      >
+        <div>
+          <LandingReveal delay={80}>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 10,
+                borderRadius: 9999,
+                padding: '8px 14px',
+                marginBottom: 26,
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                color: 'rgba(255,255,255,0.76)',
+                fontFamily: 'var(--font-body)',
+                fontSize: 12,
+                fontWeight: 600,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+              }}
+            >
+              <Sparkles size={14} color="#d5ae64" />
+              Belleza & bienestar en Rafaela
+            </div>
+          </LandingReveal>
 
-        {/* Separador dorado */}
-        <div style={{
-          marginTop: 28,
-          width: 48,
-          height: 1,
-          background: 'linear-gradient(90deg, transparent, #C5A059, transparent)',
-        }} />
+          <LandingReveal delay={150}>
+            <div
+              style={{
+                fontFamily: 'var(--font-display)',
+                color: '#e6cc8f',
+                lineHeight: 0.92,
+                textShadow: '0 10px 42px rgba(0,0,0,0.28)',
+              }}
+              className="text-[76px] sm:text-[96px] lg:text-[138px]"
+            >
+              Etéreo
+            </div>
+          </LandingReveal>
 
-        {/* CTAs */}
-        <div
-          className="flex flex-col sm:flex-row gap-3 mt-8 w-full sm:w-auto"
-        >
-          {/* Reservar */}
-          <button
-            onClick={onReservar}
-            style={{
-              background: '#C5A059',
-              border: 'none',
-              color: '#2C1F14',
-              padding: '16px 36px',
-              borderRadius: 'var(--radius-full)',
-              fontSize: 15,
-              fontFamily: 'var(--font-body)',
-              fontWeight: 600,
-              cursor: 'pointer',
-              letterSpacing: '0.02em',
-              transition: 'background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease',
-              boxShadow: '0 4px 20px rgba(197,160,89,0.35)',
-              width: '100%',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#b08a42'
-              e.currentTarget.style.transform = 'translateY(-2px)'
-              e.currentTarget.style.boxShadow = '0 8px 28px rgba(197,160,89,0.45)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#C5A059'
-              e.currentTarget.style.transform = 'translateY(0)'
-              e.currentTarget.style.boxShadow = '0 4px 20px rgba(197,160,89,0.35)'
-            }}
-          >
-            Reservar mi turno
-          </button>
+          <LandingReveal delay={230}>
+            <p
+              style={{
+                marginTop: 18,
+                maxWidth: 640,
+                fontFamily: "'Cormorant Garamond', Georgia, serif",
+                fontStyle: 'italic',
+                fontWeight: 400,
+                color: 'rgba(255,255,255,0.86)',
+                lineHeight: 1.45,
+              }}
+              className="text-[24px] sm:text-[28px] lg:text-[34px]"
+            >
+              Un refugio de belleza, cuidado y bienestar pensado para que cada visita se sienta íntima, elegante y simple.
+            </p>
+          </LandingReveal>
 
-          {/* Ingresar */}
-          <button
-            onClick={() => navigate('/login')}
-            style={{
-              background: 'transparent',
-              border: '1px solid rgba(255,255,255,0.6)',
-              color: 'white',
-              padding: '16px 36px',
-              borderRadius: 'var(--radius-full)',
-              fontSize: 15,
-              fontFamily: 'var(--font-body)',
-              fontWeight: 500,
-              cursor: 'pointer',
-              letterSpacing: '0.02em',
-              transition: 'background 0.2s ease, border-color 0.2s ease, transform 0.15s ease',
-              width: '100%',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.08)'
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.9)'
-              e.currentTarget.style.transform = 'translateY(-2px)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent'
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.6)'
-              e.currentTarget.style.transform = 'translateY(0)'
-            }}
-          >
-            Ingresar
-          </button>
+          <LandingReveal delay={300}>
+            <p
+              style={{
+                marginTop: 20,
+                maxWidth: 620,
+                fontFamily: 'var(--font-body)',
+                fontSize: 15,
+                lineHeight: 1.8,
+                color: 'rgba(255,255,255,0.68)',
+              }}
+            >
+              Te esperamos en Moreno 212 · 1A, Rafaela. Reservá online, descubrí nuestros servicios y conocé una experiencia de salón construida con detalle, calidez y resultados visibles desde el primer momento.
+            </p>
+          </LandingReveal>
+
+          <LandingReveal delay={360}>
+            <div className="flex flex-col sm:flex-row gap-4 mt-10">
+              <button
+                onClick={onReservar}
+                className="landing-hero-primary"
+                style={{
+                  border: '1px solid rgba(224,191,128,0.18)',
+                  background: 'linear-gradient(135deg, #f6e5b8 0%, #dbb46d 42%, #b88237 100%)',
+                  color: '#2C1F14',
+                  borderRadius: 9999,
+                  padding: '17px 28px',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: 13,
+                  fontWeight: 800,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 10,
+                  boxShadow: '0 18px 34px rgba(99,67,20,0.26)',
+                  transition: 'transform 220ms ease, box-shadow 220ms ease, filter 220ms ease',
+                }}
+              >
+                <CalendarHeart size={18} strokeWidth={1.8} />
+                Reservar mi turno
+              </button>
+
+              <button
+                onClick={() => navigate('/login')}
+                className="landing-hero-secondary"
+                style={{
+                  border: '1px solid rgba(255,255,255,0.22)',
+                  background: 'rgba(255,255,255,0.06)',
+                  color: 'var(--color-tertiary)',
+                  borderRadius: 9999,
+                  padding: '17px 28px',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  transition: 'transform 220ms ease, background 220ms ease, border-color 220ms ease',
+                }}
+              >
+                Ingresar
+              </button>
+            </div>
+          </LandingReveal>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-12">
+            {[
+              { icon: MapPin, label: 'Dirección', value: 'Moreno 212 · 1A' },
+              { icon: Leaf, label: 'Ciudad', value: 'Rafaela, Santa Fe' },
+              { icon: Clock3, label: 'Reservas', value: 'Rápidas, cómodas y online' },
+            ].map((item, index) => {
+              const Icon = item.icon
+              return (
+                <LandingReveal key={item.label} delay={430 + index * 90}>
+                  <div
+                    className="landing-inline-detail"
+                    style={{
+                      borderTop: '1px solid rgba(197,160,89,0.22)',
+                      paddingTop: 14,
+                      transition: 'transform 220ms ease, border-color 220ms ease',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                      <Icon size={16} color="#d5ae64" />
+                      <span
+                        style={{
+                          fontFamily: 'var(--font-body)',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          letterSpacing: '0.18em',
+                          textTransform: 'uppercase',
+                          color: 'rgba(255,255,255,0.48)',
+                        }}
+                      >
+                        {item.label}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: 'var(--font-body)',
+                        fontSize: 14,
+                        fontWeight: 500,
+                        color: 'rgba(255,255,255,0.82)',
+                      }}
+                    >
+                      {item.value}
+                    </div>
+                  </div>
+                </LandingReveal>
+              )
+            })}
+          </div>
         </div>
+
+        <LandingReveal delay={220} className="relative">
+          <div
+            style={{
+              borderRadius: 36,
+              padding: 20,
+              background: 'linear-gradient(180deg, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.04) 100%)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              boxShadow: '0 28px 54px rgba(18,10,6,0.22)',
+            }}
+          >
+            <div
+              style={{
+                borderRadius: 28,
+                minHeight: 520,
+                padding: 22,
+                background: `
+                  radial-gradient(circle at 70% 18%, rgba(255,255,255,0.18) 0%, transparent 22%),
+                  linear-gradient(180deg, rgba(248,244,238,0.18) 0%, rgba(255,255,255,0.04) 100%),
+                  rgba(58,42,31,0.72)
+                `,
+                display: 'grid',
+                alignContent: 'space-between',
+                gap: 18,
+              }}
+            >
+              <HeroEditorialCard
+                eyebrow="Ritual de bienvenida"
+                title="Una primera impresión más cálida, sofisticada y memorable."
+                body="Queremos que la experiencia digital transmita la misma calma y atención al detalle que se vive dentro del salón."
+              />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div
+                  style={{
+                    borderRadius: 24,
+                    padding: 22,
+                    background: 'rgba(249,245,240,0.88)',
+                    color: 'var(--color-primary)',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontFamily: 'var(--font-body)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: '0.22em',
+                      textTransform: 'uppercase',
+                      color: 'rgba(44,31,20,0.48)',
+                      marginBottom: 10,
+                    }}
+                  >
+                    Estilo Etereo
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'var(--font-heading)',
+                      fontSize: 25,
+                      lineHeight: 1.12,
+                      marginBottom: 10,
+                    }}
+                  >
+                    Belleza que se siente serena.
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'var(--font-body)',
+                      fontSize: 14,
+                      lineHeight: 1.7,
+                      color: 'rgba(44,31,20,0.72)',
+                    }}
+                  >
+                    Tonos cálidos, curvas suaves y composición más editorial para salir del look genérico.
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    borderRadius: 24,
+                    padding: 22,
+                    background: 'rgba(27,18,13,0.52)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    color: 'var(--color-tertiary)',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontFamily: 'var(--font-body)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: '0.22em',
+                      textTransform: 'uppercase',
+                      color: 'rgba(197,160,89,0.78)',
+                      marginBottom: 10,
+                    }}
+                  >
+                    Promesa
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'var(--font-heading)',
+                      fontSize: 22,
+                      lineHeight: 1.15,
+                      marginBottom: 10,
+                    }}
+                  >
+                    Cuidar cada detalle, también online.
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'var(--font-body)',
+                      fontSize: 14,
+                      lineHeight: 1.7,
+                      color: 'rgba(255,255,255,0.7)',
+                    }}
+                  >
+                    La landing no solo informa: marca el tono de la marca antes de la reserva.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </LandingReveal>
       </div>
 
-      <ScrollIndicator visible={showScroll} />
+      <ScrollCue visible={showCue} />
 
       <style>{`
-        @keyframes heroScrollBounce {
-          0%, 100% { transform: translateY(0); opacity: 0.7; }
-          50% { transform: translateY(6px); opacity: 1; }
+        @keyframes heroFloatDown {
+          0%, 100% { transform: translateY(0); opacity: 0.65; }
+          50% { transform: translateY(7px); opacity: 1; }
+        }
+
+        .landing-hero-primary:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 24px 40px rgba(99,67,20,0.32);
+          filter: saturate(1.04);
+        }
+
+        .landing-hero-secondary:hover {
+          transform: translateY(-2px);
+          background: rgba(255,255,255,0.1);
+          border-color: rgba(255,255,255,0.34);
+        }
+
+        .landing-inline-detail:hover {
+          transform: translateY(-2px);
+          border-color: rgba(197,160,89,0.38);
+        }
+
+        .landing-premium-surface:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 24px 44px rgba(15,10,7,0.2);
+          border-color: rgba(255,255,255,0.18);
         }
       `}</style>
     </section>
