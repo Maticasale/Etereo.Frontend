@@ -2,7 +2,7 @@
 
 > Documento técnico maestro del frontend. Refleja el diseño acordado del sistema de gestión de la estética Etereo.
 > Combina estado actual del código + comportamiento objetivo cuando un módulo todavía no fue implementado por completo.
-> Última actualización: Mayo 2026 — v6: Landing pública, PublicLayout, tipados alineados con backend y convención explícita de estado por módulo.
+> Última actualización: Mayo 2026 — v7: wizard público `/reservar` implementado como prototipo funcional, entrypoint por datos del cliente y filtrado inicial por sexo.
 
 ---
 
@@ -162,7 +162,7 @@ etereo-frontend/
 │   │   │   ├── RegistroPage.tsx    — Ruta existente, contenido todavía placeholder [Parcial]
 │   │   │   └── CambiarPasswordPage.tsx — Ruta existente, contenido todavía placeholder [Parcial]
 │   │   ├── portal/                 — Vistas del cliente (público)
-│   │   │   ├── ReservaTurnoPage.tsx  — Ruta del wizard; contenido actual placeholder [Parcial]
+│   │   │   ├── ReservaTurnoPage.tsx  — Wizard público de reserva, interactivo/prototipo de alta fidelidad [Implementado]
 │   │   │   ├── MisTurnosPage.tsx     — Ruta existente, contenido placeholder [Parcial]
 │   │   │   ├── MisCuponesPage.tsx    — Ruta existente, contenido placeholder [Parcial]
 │   │   │   └── MiPerfilPage.tsx      — Ruta existente, contenido placeholder [Parcial]
@@ -308,63 +308,78 @@ El Sidebar filtra automáticamente los items del menú según el rol del usuario
 
 ## 5. Flujo de reserva de turno (portal cliente)
 
-> Estado: **Pendiente**
+> Estado: **Implementado**
 >
-> La ruta `/reservar` ya existe y el backend necesario también, pero el wizard detallado de esta sección todavía no está implementado en React.
-> Esta sección describe el comportamiento objetivo acordado para cuando se construya el módulo completo.
+> La ruta `/reservar` ya no es placeholder: hoy existe un wizard público navegable e interactivo en React.
+> Su estado actual es **prototipo funcional / alta fidelidad**: resuelve layout, jerarquía visual, comportamiento entre pasos y reglas base de negocio visibles, aunque todavía no consume el backend real de forma completa.
 
-Wizard de pasos en `ReservaTurnoPage`. El número de pasos varía según el tipo de servicio:
+### Flujo actual implementado en `ReservaTurnoPage`
 
 ```
-Paso 1 — Elegir salón
-  → Salon 1 (Todos los servicios excepto peluquería)
-  → Salon 2 (Peluquería)
+Paso 1 — Tus datos
+  → Nombre, apellido, teléfono, email opcional
+  → Sexo obligatorio: Femenino | Masculino
+  → El sexo se pide al inicio para filtrar correctamente salones/servicios
 
-Paso 2 — Elegir servicio
-  → GET /api/v1/servicios?salon=X
-  → Los servicios se muestran como categorías (Masajes, Depilación Láser, etc.)
+Paso 2 — Servicio
+  → Selector de salón con cards editoriales grandes
+  → Si sexo = Masculino, Salón 2 no se muestra
+  → Luego se elige el servicio dentro del salón seleccionado
+  → En este paso no se muestra todavía el resumen lateral
 
-Paso 3 — Elegir subservicio
-  → Filtrado por sexo del cliente si está registrado:
-      Masculino → solo subservicios sexo IN (Masculino, Ambos)
-      Femenino  → solo subservicios sexo IN (Femenino, Ambos)
-      NoEspecifica / anónimo → todos, agrupados con separador:
-        "── Zonas Mujeres ──" / "── Zonas Hombres ──" / "── General ──"
-  → Packs (es_pack=true) se muestran en sección destacada separada:
-      Card especial con: badge "PACK", detalle_pack (zonas incluidas),
-      precio total y ahorro estimado vs. unitarios
-  → Subservicios simples se listan normalmente
+Paso 3 — Selección
+  → Caso demo actual: Depilación Láser
+  → Columna izquierda: combos destacados
+  → Columna derecha: zonas individuales agrupadas por sexo
+  → Si se elige un combo:
+      - se limpian las zonas individuales previamente seleccionadas
+      - la columna de zonas queda atenuada/bloqueada
+      - aparece CTA "Deseleccionar combo"
+  → Si se eligen 3 o más zonas individuales:
+      - se aplica descuento automático del 15%
+      - aparece banner visual de descuento aplicado
 
-  → Si el subservicio NO tiene variantes: precio y duración mostrados directo → siguiente paso
-  → Si el subservicio SÍ tiene variantes (Alisados, Trenzas, Drenaje): aparece selector de variante
+Paso 4 — Horario
+  → Selector visual de semana
+  → Elección de día primero, luego horarios del día
+  → La demo actual usa bloques de 30 minutos
+  → El botón siguiente solo se habilita cuando hay día + hora seleccionados
 
-Paso 4 (condicional) — Elegir variante
-  → Solo aparece si el subservicio seleccionado tiene variantes
-  → Lista de variantes con nombre, precio y duración
-  → Ej: "A los hombros — $26.000 — 90 min"
+Paso 5 — Cupón
+  → Si usuario autenticado: muestra cupones simulados + ingreso manual
+  → Si usuario invitado: solo ingreso manual de código
+  → El resumen se recalcula en vivo
 
-Paso 5 — Elegir operaria, fecha y hora
-  → Dropdown de operarias que pueden hacer ese subservicio
-  → Calendario con slots disponibles (GET /turnos/disponibilidad?subservicioId=X&varianteId=Y&fecha=Z)
-  → Slots bloqueados en gris con tooltip del motivo
-
-Paso 6 — Opciones de descuento (si aplica)
-  → Si es zona de Láser o Descartable (no pack):
-      Pregunta "¿Querés agregar más zonas para obtener X% de descuento?"
-      Si dice SÍ → selector de zonas adicionales del mismo servicio/sexo
-      Al llegar a N zonas mínimas → banner "¡Descuento de X% aplicado automáticamente!"
-      Si dice NO → continúa con la zona individual sin descuento
-  → Si cliente registrado: muestra cupones disponibles
-      → puede aplicar uno → precio se actualiza en tiempo real
-
-Paso 7 — Confirmar datos
-  → Si registrado: muestra datos del perfil para confirmar
-  → Si anónimo: formulario nombre completo + teléfono (obligatorios)
-  → Resumen: servicio(s), variante (si aplica), operaria, fecha/hora, precio con/sin descuento
-  → Si hay múltiples zonas → se llama POST /sesiones (crea sesión + N turnos)
-  → Si es turno individual → se llama POST /turnos
-  → Éxito: pantalla de confirmación con estado "Pendiente de confirmación"
+Paso 6 — Confirmar
+  → Resumen final de salón, servicio, selección, fecha/hora, duración y total
+  → Éxito visual posterior con estado "Pendiente de confirmación"
 ```
+
+### Reglas de estado visibles ya implementadas en UI
+
+- No hay selecciones iniciales prearmadas en el flujo.
+- El botón `Siguiente` se habilita solo cuando el paso actual está completo.
+- Si el usuario vuelve un paso atrás, se limpia el estado del paso abandonado para no arrastrar selecciones inválidas.
+- El patrón visual `no seleccionado / seleccionado / bloqueado` está unificado progresivamente entre cards de salón, servicios, combos, zonas y slots.
+- El resumen lateral aparece a partir de la selección real del turno; no en el primer paso de datos/servicio.
+
+### Alcance actual vs pendiente
+
+**Ya resuelto en React**
+- Routing público hacia `/reservar`
+- Wizard interactivo de 6 pasos + pantalla de éxito
+- Entry anónimo y autenticado
+- Filtro inicial por sexo en UI
+- Ocultamiento de Salón 2 para sexo masculino
+- Resumen lateral y resumen mobile
+- Cupón simulado y descuentos visuales
+
+**Todavía pendiente de conectar o endurecer**
+- Datos reales desde `GET /servicios`
+- Disponibilidad real desde backend
+- Variantes reales de subservicio
+- Creación final con `POST /turnos` / `POST /sesiones`
+- Validaciones finales de negocio sincronizadas 100% con contrato
 
 ---
 
@@ -565,7 +580,7 @@ export function XxxFormDialog({ open, onOpenChange, onSubmit, isSubmitting }: Pr
 
 - **Alias:** `@/` apunta a `src/`
 - **Idioma:** archivos y componentes en inglés/PascalCase; strings UI en español rioplatense
-- **Sexo en registro:** campo opcional en el formulario de registro. Si no lo completa → se envía `NoEspecifica` (default). Las opciones son: "Mujer", "Hombre", "Prefiero no indicar".
+- **Sexo en registro/reserva:** en registro puede seguir existiendo `NoEspecifica`, pero en el wizard `/reservar` el sexo es obligatorio antes de mostrar salones y servicios. La UI pública de reserva trabaja con dos opciones: `Femenino` y `Masculino`.
 - **Query keys:** `['recurso', filtros]` → ej: `['turnos', { desde, hasta, operarioId }]`
 - **Errores de mutaciones:** siempre `onError: (err) => toast.error(getErrorMessage(err))`
 - **Formularios con números:** `z.coerce.number()` + `as any` en el resolver
@@ -610,8 +625,8 @@ En dev, `vite.config.ts` proxea `/api` al backend local.
 
 > Estado general: **Parcial**
 >
-> El entrypoint desde landing, `ReservaTurnoModal`, `useReservaTurno`, `LoginPage` y el redirect post-auth están implementados.
-> Registro, cambio de contraseña y wizard final de reserva todavía no están completos en UI.
+> El entrypoint desde landing, `ReservaTurnoModal`, `LoginPage`, el redirect post-auth y el wizard visual `/reservar` ya están implementados.
+> Lo que sigue pendiente es terminar registro/cambio de contraseña y conectar el wizard con datos reales del backend.
 
 ### Flujo de entrada
 
@@ -775,6 +790,7 @@ LoginPage tiene layout split 2 columnas propio; va fuera del PublicLayout.
 - `ServiciosSection` consume `GET /servicios` real.
 - `CalificacionesSection` todavía usa mocks porque no existe endpoint público específico.
 - El redirect `/login?redirect=reserva` → `/?iniciar_reserva=1` → `/reservar` ya funciona.
+- `/reservar` ya renderiza el wizard público real; no es más una ruta placeholder.
 
 ---
 
