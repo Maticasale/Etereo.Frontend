@@ -327,6 +327,8 @@ export default function ReservaTurnoPage() {
   const [selectionMode, setSelectionMode] = useState<'combos' | 'zonas'>('zonas')
   const [guestData, setGuestData] = useState<GuestData>(DEFAULT_GUEST)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [progressMerged, setProgressMerged] = useState(false)
+  const [headerHidden, setHeaderHidden] = useState(false)
 
   useEffect(() => {
     if (usuario) {
@@ -350,6 +352,29 @@ export default function ReservaTurnoPage() {
       setSelectedZoneIds([])
     }
   }, [selectedSex, selectedSalon])
+
+  useEffect(() => {
+    let lastY = window.scrollY
+
+    const handleScroll = () => {
+      const currentY = window.scrollY
+      setProgressMerged(currentY > 120)
+
+      if (currentY <= 12) {
+        setHeaderHidden(false)
+      } else if (currentY > lastY + 6 && currentY > 140) {
+        setHeaderHidden(true)
+      } else if (currentY < lastY - 12) {
+        setHeaderHidden(false)
+      }
+
+      lastY = currentY
+    }
+
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const filteredSalones = SALONES.filter((salon) => !(selectedSex === 'Masculino' && salon.id === 'salon2'))
   const availableServices = selectedSalon
@@ -627,15 +652,11 @@ export default function ReservaTurnoPage() {
 
     if (step === 2) {
       const visibleCombos = selectedSex === 'Femenino' ? LASER_COMBOS : []
-      const groupedZones = [
+      const visibleZones = LASER_ZONES.filter((zone) =>
         selectedSex === 'Femenino'
-          ? { title: 'Zonas Mujeres', items: LASER_ZONES.filter((zone) => zone.grupo === 'Mujeres') }
-          : null,
-        selectedSex === 'Masculino'
-          ? { title: 'Zonas Hombres', items: LASER_ZONES.filter((zone) => zone.grupo === 'Hombres') }
-          : null,
-        { title: 'General', items: LASER_ZONES.filter((zone) => zone.grupo === 'General') },
-      ].filter(Boolean) as Array<{ title: string; items: ZoneOption[] }>
+          ? zone.grupo === 'Mujeres' || zone.grupo === 'General'
+          : zone.grupo === 'Hombres' || zone.grupo === 'General',
+      )
 
       return (
         <section className="wizard-panel wizard-animate">
@@ -732,34 +753,29 @@ export default function ReservaTurnoPage() {
                 ) : null}
 
                 <div className={`zone-stack ${selectedComboId ? 'locked' : ''}`}>
-                  {groupedZones.map((group) => (
-                    <div key={group.title}>
-                      <div className="zone-group-divider">── {group.title} ──</div>
-                      {group.items.map((zone) => {
-                        const selected = selectedZoneIds.includes(zone.id)
-                        return (
-                          <button
-                            key={zone.id}
-                            type="button"
-                            onClick={() => toggleZone(zone.id)}
-                            className={`zone-card ${selected ? 'selected' : ''}`}
-                            disabled={!!selectedComboId}
-                          >
-                            <div className="zone-left">
-                              <span className={`zone-check ${selected ? 'selected' : ''}`}>
-                                {selected ? <Check size={14} /> : null}
-                              </span>
-                              <div>
-                                <h3>{zone.nombre}</h3>
-                                <p>⏱ ~{zone.duracionMin} min</p>
-                              </div>
-                            </div>
-                            <strong>{formatCurrency(zone.precio)}</strong>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  ))}
+                  {visibleZones.map((zone) => {
+                    const selected = selectedZoneIds.includes(zone.id)
+                    return (
+                      <button
+                        key={zone.id}
+                        type="button"
+                        onClick={() => toggleZone(zone.id)}
+                        className={`zone-card ${selected ? 'selected' : ''}`}
+                        disabled={!!selectedComboId}
+                      >
+                        <div className="zone-left">
+                          <span className={`zone-check ${selected ? 'selected' : ''}`}>
+                            {selected ? <Check size={14} /> : null}
+                          </span>
+                          <div>
+                            <h3>{zone.nombre}</h3>
+                            <p>⏱ ~{zone.duracionMin} min</p>
+                          </div>
+                        </div>
+                        <strong>{formatCurrency(zone.precio)}</strong>
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             </div>
@@ -1024,8 +1040,8 @@ export default function ReservaTurnoPage() {
     <>
       <main className="reserva-page">
         <div className="reserva-shell">
-          <div className="progress-shell">
-            <div className="progress-card">
+          <div className={`progress-shell ${progressMerged ? 'merged' : ''} ${headerHidden ? 'header-hidden' : ''}`}>
+            <div className={`progress-card ${progressMerged ? 'merged' : ''}`}>
               <div className="progress-line">
                 <span style={{ width: `${progressValue}%` }} />
               </div>
@@ -1048,12 +1064,12 @@ export default function ReservaTurnoPage() {
             </div>
           </div>
 
-          <div className={`content-shell ${step <= 1 ? 'no-summary' : ''}`}>
-            <div className={`content-column ${step === 6 ? 'full-width' : ''}`}>{renderStepContent()}</div>
+          <div className={`content-shell ${step <= 1 ? 'no-summary' : ''} ${progressMerged ? 'merged' : ''}`}>
+            <div className={`content-column ${step === 6 ? 'full-width' : ''} ${progressMerged ? 'merged' : ''}`}>{renderStepContent()}</div>
 
             {step > 1 && step < 6 ? (
-              <aside className="summary-column">
-                <div className="summary-card">
+              <aside className={`summary-column ${progressMerged ? 'merged' : ''}`}>
+                <div className={`summary-card ${progressMerged ? 'merged' : ''}`}>
                   <div className="summary-header">
                     <div>
                       <span className="section-label">Tu reserva</span>
@@ -1192,17 +1208,39 @@ export default function ReservaTurnoPage() {
           top: 118px;
           z-index: 20;
           margin-bottom: 26px;
+          transition: margin-bottom 280ms ease, top 420ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .progress-shell.merged {
+          margin-bottom: -18px;
+        }
+
+        .progress-shell.header-hidden {
+          top: 16px;
         }
 
         .progress-card {
           position: relative;
+          isolation: isolate;
           overflow: hidden;
           padding: 24px 22px 18px;
           border-radius: 24px;
-          background: rgba(255,255,255,0.9);
+          background: rgba(255,255,255,0.96);
           border: 1px solid rgba(232,224,216,0.9);
           box-shadow: 0 12px 36px rgba(74,55,40,0.09);
-          backdrop-filter: blur(12px);
+          backdrop-filter: blur(16px);
+          transition:
+            border-radius 280ms ease,
+            box-shadow 280ms ease,
+            border-color 280ms ease,
+            background 280ms ease;
+        }
+
+        .progress-card.merged {
+          border-bottom-left-radius: 0;
+          border-bottom-right-radius: 0;
+          background: rgba(255,255,255,0.985);
+          box-shadow: 0 14px 30px rgba(74,55,40,0.06);
         }
 
         .progress-line {
@@ -1286,6 +1324,11 @@ export default function ReservaTurnoPage() {
           grid-template-columns: minmax(0, 1fr) 320px;
           gap: 26px;
           align-items: start;
+          transition: margin-top 240ms ease;
+        }
+
+        .content-shell.merged {
+          margin-top: 0;
         }
 
         .content-shell.no-summary {
@@ -1294,6 +1337,38 @@ export default function ReservaTurnoPage() {
 
         .content-column.full-width {
           grid-column: 1 / -1;
+        }
+
+        .content-column.merged > .wizard-panel:first-child {
+          position: relative;
+          overflow: hidden;
+          border-top-left-radius: 0;
+          border-top-right-radius: 0;
+          border-top: none;
+          box-shadow: 0 18px 38px rgba(74,55,40,0.08);
+          padding-top: 72px;
+        }
+
+        .summary-card.merged {
+          position: relative;
+          overflow: hidden;
+          border-top-left-radius: 0;
+          border-top-right-radius: 0;
+          border-top: none;
+          padding-top: 72px;
+        }
+
+        .content-column.merged > .wizard-panel:first-child::before,
+        .summary-card.merged::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 72px;
+          background: linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(255,255,255,0.985) 58%, rgba(255,255,255,0.9) 82%, rgba(255,255,255,0) 100%);
+          pointer-events: none;
+          z-index: 2;
         }
 
         .wizard-panel,
@@ -1857,16 +1932,6 @@ export default function ReservaTurnoPage() {
         .zone-overlay-btn:hover {
           background: rgba(255,255,255,0.18);
           transform: translateY(-1px);
-        }
-
-        .zone-group-divider {
-          margin: 28px 0 16px;
-          font-family: var(--font-body);
-          font-size: 12px;
-          font-weight: 700;
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-          color: var(--color-text-muted);
         }
 
         .zone-card {

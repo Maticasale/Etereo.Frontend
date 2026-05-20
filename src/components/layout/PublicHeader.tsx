@@ -9,9 +9,26 @@ interface PublicHeaderProps {
 export default function PublicHeader({ onReservar }: PublicHeaderProps) {
   const navigate = useNavigate()
   const [scrolled, setScrolled] = useState(false)
+  const [hidden, setHidden] = useState(false)
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 40)
+    let lastY = window.scrollY
+
+    const handleScroll = () => {
+      const currentY = window.scrollY
+      setScrolled(currentY > 24)
+
+      if (currentY <= 12) {
+        setHidden(false)
+      } else if (currentY > lastY + 6 && currentY > 140) {
+        setHidden(true)
+      } else if (currentY < lastY - 12) {
+        setHidden(false)
+      }
+
+      lastY = currentY
+    }
+
     handleScroll()
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
@@ -24,31 +41,29 @@ export default function PublicHeader({ onReservar }: PublicHeaderProps) {
           position: 'fixed',
           inset: '0 0 auto 0',
           zIndex: 120,
-          padding: scrolled ? '14px 18px 0' : '20px 122px 0',
-          transition: 'padding 220ms ease',
+          transform: hidden ? 'translateY(-100%)' : 'translateY(0)',
+          opacity: hidden ? 0.98 : 1,
+          transition: 'transform 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 300ms ease',
         }}
       >
         <div
           style={{
-            maxWidth: 1240,
-            margin: '0 auto',
-            borderRadius: 9999,
+            width: '100%',
             position: 'relative',
             overflow: 'hidden',
             background: scrolled
-              ? 'linear-gradient(180deg, rgba(38,27,20,0.86) 0%, rgba(30,21,16,0.82) 100%)'
-              : 'linear-gradient(180deg, rgba(69,50,38,0.74) 0%, rgba(58,42,31,0.68) 100%)',
+              ? 'linear-gradient(180deg, rgba(38,27,20,0.96) 0%, rgba(30,21,16,0.92) 100%)'
+              : 'linear-gradient(180deg, rgba(69,50,38,0.88) 0%, rgba(58,42,31,0.82) 100%)',
             border: scrolled
-              ? '1px solid rgba(197,160,89,0.18)'
-              : '1px solid rgba(255,255,255,0.1)',
+              ? '1px solid rgba(197,160,89,0.16)'
+              : '1px solid rgba(255,255,255,0.08)',
             boxShadow: scrolled
-              ? '0 18px 38px rgba(20,13,9,0.22)'
-              : '0 12px 28px rgba(20,13,9,0.12)',
-            backdropFilter: 'blur(18px)',
-            WebkitBackdropFilter: 'blur(18px)',
-            transform: scrolled ? 'translateY(0)' : 'translateY(0)',
+              ? '0 14px 34px rgba(20,13,9,0.2)'
+              : '0 10px 24px rgba(20,13,9,0.12)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
             transition:
-              'background 220ms ease, border-color 220ms ease, box-shadow 220ms ease, transform 220ms ease',
+              'background 220ms ease, border-color 220ms ease, box-shadow 220ms ease',
           }}
         >
           <div
@@ -56,22 +71,34 @@ export default function PublicHeader({ onReservar }: PublicHeaderProps) {
               position: 'absolute',
               inset: 0,
               background:
-                'linear-gradient(90deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 32%, rgba(231,203,140,0.04) 100%)',
+                'linear-gradient(90deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 28%, rgba(231,203,140,0.05) 100%)',
               pointerEvents: 'none',
             }}
           />
 
           <div
             style={{
-              minHeight: scrolled ? 66 : 74,
+              position: 'absolute',
+              inset: 'auto 0 0 0',
+              height: 1,
+              background: scrolled ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.06)',
+              pointerEvents: 'none',
+            }}
+          />
+
+          <div
+            style={{
+              maxWidth: 1320,
+              margin: '0 auto',
+              minHeight: scrolled ? 72 : 86,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               gap: 18,
-              padding: '0 18px 0 24px',
+              padding: scrolled ? '0 26px' : '0 34px',
               position: 'relative',
               zIndex: 1,
-              transition: 'min-height 220ms ease',
+              transition: 'min-height 220ms ease, padding 220ms ease',
             }}
           >
             <Link
@@ -89,7 +116,7 @@ export default function PublicHeader({ onReservar }: PublicHeaderProps) {
               <span
                 style={{
                   fontFamily: 'var(--font-display)',
-                  fontSize: scrolled ? 44 : 48,
+                  fontSize: scrolled ? 48 : 54,
                   lineHeight: 0.9,
                   color: scrolled ? '#f0dfbc' : 'rgba(255,255,255,0.97)',
                   textShadow: '0 2px 16px rgba(0,0,0,0.14)',
@@ -105,7 +132,7 @@ export default function PublicHeader({ onReservar }: PublicHeaderProps) {
                   marginTop: 2,
                   paddingLeft: 4,
                   fontFamily: 'var(--font-body)',
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: 700,
                   letterSpacing: scrolled ? '0.24em' : '0.28em',
                   textTransform: 'uppercase',
@@ -151,7 +178,7 @@ export default function PublicHeader({ onReservar }: PublicHeaderProps) {
                   background: 'linear-gradient(135deg, #f4e1b4 0%, #ddb66f 48%, #c18c45 100%)',
                   color: '#2C1F14',
                   borderRadius: 9999,
-                  padding: scrolled ? '14px 22px' : '15px 24px',
+                  padding: scrolled ? '14px 22px' : '16px 26px',
                   fontFamily: 'var(--font-body)',
                   fontSize: 13,
                   fontWeight: 800,
