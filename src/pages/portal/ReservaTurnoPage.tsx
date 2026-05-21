@@ -1328,21 +1328,36 @@ export default function ReservaTurnoPage() {
 
             <div className="success-tl">
               <div className="success-ts">
-                <div className="success-ts-t">Recibimos tu solicitud</div>
-                <div className="success-ts-d">Tu pedido ya está en revisión con la operaria.</div>
-                <span className="success-when">Recién</span>
+                <div className="success-ts-left">
+                  <div className="success-ts-dot active">1</div>
+                </div>
+                <div className="success-ts-body">
+                  <div className="success-ts-t">Recibimos tu solicitud</div>
+                  <div className="success-ts-d">Tu pedido ya está en revisión con la operaria.</div>
+                  <span className="success-when">Recién</span>
+                </div>
               </div>
 
               <div className="success-ts pending">
-                <div className="success-ts-t">Confirmación por {successChannels}</div>
-                <div className="success-ts-d">Te avisamos quién te va a atender y confirmamos el horario.</div>
-                <span className="success-when">En ~30 min</span>
+                <div className="success-ts-left">
+                  <div className="success-ts-dot pending">2</div>
+                </div>
+                <div className="success-ts-body">
+                  <div className="success-ts-t">Confirmación por {successChannels}</div>
+                  <div className="success-ts-d">Te avisamos quién te va a atender y confirmamos el horario.</div>
+                  <span className="success-when">En ~30 min</span>
+                </div>
               </div>
 
               <div className="success-ts pending">
-                <div className="success-ts-t">¡Nos vemos en el salón!</div>
-                <div className="success-ts-d">Llegá 5 minutos antes. Tu operaria ya te va a estar esperando.</div>
-                <span className="success-when">{successTimelineTime}</span>
+                <div className="success-ts-left">
+                  <div className="success-ts-dot pending">3</div>
+                </div>
+                <div className="success-ts-body">
+                  <div className="success-ts-t">¡Nos vemos en el salón!</div>
+                  <div className="success-ts-d">Llegá 5 minutos antes. Tu operaria ya te va a estar esperando.</div>
+                  <span className="success-when">{successTimelineTime}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -4655,7 +4670,7 @@ export default function ReservaTurnoPage() {
         .success-botanical-side {
           position: fixed !important;
           top: 0 !important;
-          width: 214px !important;
+          width: 248px !important;
           height: 100vh !important;
           opacity: 0.94 !important;
           z-index: 0 !important;
@@ -4663,63 +4678,105 @@ export default function ReservaTurnoPage() {
         }
 
         .success-botanical-side-left {
-          left: 14px !important;
+          left: 28px !important;
         }
 
         .success-botanical-side-right {
-          right: 14px !important;
+          right: 28px !important;
         }
 
         .success-tl {
-          padding-left: 60px !important;
+          display: flex !important;
+          flex-direction: column !important;
+          padding-left: 0 !important;
         }
 
-        .success-tl::before {
-          content: none !important;
-        }
-
-        .success-tl::after {
+        .success-tl::before,
+        .success-tl::after,
+        .success-ts::before,
+        .success-ts::after {
           content: none !important;
         }
 
         .success-ts {
+          display: flex !important;
+          gap: 18px !important;
           position: relative !important;
-          padding-bottom: 34px !important;
-        }
-
-        .success-ts:last-child {
           padding-bottom: 0 !important;
         }
 
-        .success-ts::before {
-          left: -47px !important;
-          top: 2px !important;
-          width: 24px !important;
-          height: 24px !important;
+        .success-ts + .success-ts {
+          margin-top: 2px !important;
         }
 
-        .success-ts::after {
+        .success-ts-left {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          flex-shrink: 0 !important;
+          width: 28px !important;
+        }
+
+        .success-ts:not(:last-child) .success-ts-left::after {
+          content: '' !important;
+          width: 2px !important;
+          flex: 1 1 auto !important;
+          min-height: 18px !important;
+          margin-top: 4px !important;
+          border-radius: 999px !important;
+          background: rgba(197,160,89,0.24) !important;
+        }
+
+        .success-ts:first-child .success-ts-left::after {
+          background: linear-gradient(180deg, var(--color-secondary) 50%, rgba(197,160,89,0.24) 50%) !important;
+          box-shadow: 0 0 12px rgba(197,160,89,0.18) !important;
+        }
+
+        .success-ts-body {
+          flex: 1 1 auto !important;
+          min-width: 0 !important;
+          padding-bottom: 28px !important;
+        }
+
+        .success-ts:last-child .success-ts-body {
+          padding-bottom: 0 !important;
+        }
+
+        .success-ts-dot {
+          flex-shrink: 0 !important;
+          width: 28px !important;
+          height: 28px !important;
+          border-radius: 999px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          font-family: var(--font-body) !important;
+          font-size: 11px !important;
+          font-weight: 800 !important;
+          position: relative !important;
+        }
+
+        .success-ts-dot.active {
+          background: var(--color-secondary) !important;
+          color: var(--color-primary) !important;
+          box-shadow: 0 0 0 5px rgba(197,160,89,0.18), 0 0 16px rgba(197,160,89,0.3) !important;
+        }
+
+        .success-ts-dot.active::after {
           content: '' !important;
           position: absolute !important;
-          left: -35px !important;
-          top: 14px !important;
-          width: 2px !important;
-          height: calc(100% + 22px) !important;
-          background: rgba(197,160,89,0.3) !important;
+          inset: -7px !important;
           border-radius: 999px !important;
+          border: 1.5px solid rgba(197,160,89,0.45) !important;
+          animation: ring-pulse 2.2s ease-out infinite !important;
+          pointer-events: none !important;
         }
 
-        .success-ts:first-child::after {
-          background: linear-gradient(180deg, #d8b15f 0%, #cfa34b 100%) !important;
-          box-shadow: 0 0 14px rgba(197,160,89,0.28) !important;
-        }
-
-        .success-ts:last-child::after {
-          content: none !important;
-        }
-
-        .success-ts:first-child::before {
-          box-shadow: 0 0 0 5px rgba(197,160,89,0.22), 0 0 18px rgba(197,160,89,0.34) !important;
+        .success-ts-dot.pending {
+          background: #1e1409 !important;
+          border: 2px solid rgba(197,160,89,0.42) !important;
+          color: rgba(197,160,89,0.55) !important;
+          box-shadow: none !important;
         }
 
         @media (max-width: 860px) {
