@@ -10,6 +10,17 @@ export default function PublicHeader({ onReservar }: PublicHeaderProps) {
   const navigate = useNavigate()
   const [scrolled, setScrolled] = useState(false)
   const [hidden, setHidden] = useState(false)
+  const [forcedHidden, setForcedHidden] = useState(false)
+
+  useEffect(() => {
+    const handleVisibility = (event: Event) => {
+      const customEvent = event as CustomEvent<{ visible?: boolean }>
+      setForcedHidden(customEvent.detail?.visible === false)
+    }
+
+    window.addEventListener('etereo:public-header-visible', handleVisibility as EventListener)
+    return () => window.removeEventListener('etereo:public-header-visible', handleVisibility as EventListener)
+  }, [])
 
   useEffect(() => {
     let lastY = window.scrollY
@@ -33,6 +44,10 @@ export default function PublicHeader({ onReservar }: PublicHeaderProps) {
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  if (forcedHidden) {
+    return null
+  }
 
   return (
     <>

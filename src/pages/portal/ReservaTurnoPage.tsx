@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -6,18 +7,23 @@ import {
   BadgePercent,
   CalendarDays,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock3,
+  Eye,
   Flower2,
-  Gift,
+  HandHeart,
+  Leaf,
   MapPin,
+  MessageCircle,
   Scissors,
   ShieldCheck,
   Sparkles,
-  Ticket,
   UserRound,
+  Zap,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -37,7 +43,6 @@ interface ServiceOption {
   id: string
   salonId: SalonOption['id']
   nombre: string
-  icono: string
   descripcion: string
 }
 
@@ -107,13 +112,26 @@ const SALONES: SalonOption[] = [
 ]
 
 const SERVICIOS: ServiceOption[] = [
-  { id: 'laser', salonId: 'salon1', nombre: 'Depilación Láser', icono: '✂', descripcion: 'Sesiones por zonas con descuento automático.' },
-  { id: 'descartable', salonId: 'salon1', nombre: 'Depilación Descartable', icono: '🌿', descripcion: 'Opciones rápidas para mantenimiento.' },
-  { id: 'masajes', salonId: 'salon1', nombre: 'Masajes', icono: '💆', descripcion: 'Rituales corporales y drenaje.' },
-  { id: 'cejas', salonId: 'salon1', nombre: 'Cejas & Pestañas', icono: '👁', descripcion: 'Diseño, perfilado y lifting.' },
-  { id: 'facial', salonId: 'salon1', nombre: 'Facial', icono: '✨', descripcion: 'Limpiezas y tratamientos glow.' },
-  { id: 'peluqueria', salonId: 'salon2', nombre: 'Peluquería', icono: '💇', descripcion: 'Cortes, color y peinados.' },
+  { id: 'laser', salonId: 'salon1', nombre: 'Depilación Láser', descripcion: 'Axilas, cavado, piernas, brazos y rostro.' },
+  { id: 'descartable', salonId: 'salon1', nombre: 'Depilación Descartable', descripcion: 'Cavado, axilas, rostro, piernas y brazos.' },
+  { id: 'masajes', salonId: 'salon1', nombre: 'Masajes', descripcion: 'Descontracturantes, relajantes, drenaje y piedras calientes.' },
+  { id: 'cejas', salonId: 'salon1', nombre: 'Cejas & Pestañas', descripcion: 'Perfilado, diseño, lifting y tinte.' },
+  { id: 'facial', salonId: 'salon1', nombre: 'Facial', descripcion: 'Limpieza profunda, hidratación y dermaplaning.' },
+  { id: 'peluqueria', salonId: 'salon2', nombre: 'Peluquería', descripcion: 'Color, corte, brushing, tratamientos y peinados.' },
 ]
+
+const SERVICE_ICONS: Record<string, LucideIcon> = {
+  laser: Zap,
+  descartable: Leaf,
+  masajes: HandHeart,
+  cejas: Eye,
+  facial: Flower2,
+  peluqueria: Scissors,
+}
+
+function getServiceIcon(serviceId: string): LucideIcon {
+  return SERVICE_ICONS[serviceId] ?? Sparkles
+}
 
 const LASER_COMBOS: ComboOption[] = [
   {
@@ -189,6 +207,33 @@ const COUPONS_AUTH: CouponOption[] = [
     valor: 20,
   },
 ]
+
+const SUCCESS_STAR_POSITIONS = [
+  [8, 12],
+  [15, 68],
+  [22, 34],
+  [31, 88],
+  [42, 5],
+  [52, 47],
+  [61, 79],
+  [70, 23],
+  [79, 55],
+  [88, 91],
+  [5, 45],
+  [18, 92],
+  [28, 17],
+  [37, 62],
+  [47, 30],
+  [57, 85],
+  [66, 10],
+  [75, 50],
+  [84, 73],
+  [93, 38],
+  [11, 77],
+  [24, 3],
+  [44, 60],
+  [82, 25],
+] as const
 
 const AVAILABILITY: DayAvailability[] = [
   {
@@ -311,9 +356,128 @@ function botanicalPattern(opacity: number) {
   }
 }
 
+function SuccessBotanicalSide({ side }: { side: 'left' | 'right' }) {
+  const isRight = side === 'right'
+  return (
+    <svg
+      viewBox="0 0 180 1400"
+      preserveAspectRatio="xMidYMid slice"
+      className={`success-botanical-side success-botanical-side-${side}`}
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id="successLeafPremium" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="rgba(233,205,140,0.42)" />
+          <stop offset="100%" stopColor="rgba(233,205,140,0.08)" />
+        </linearGradient>
+      </defs>
+
+      <g fill="url(#successLeafPremium)" stroke="rgba(223,195,134,0.18)" strokeWidth="0.85">
+        {Array.from({ length: 28 }).map((_, index) => {
+          const y = 18 + index * 50
+          const x = isRight ? 150 + Math.cos(index * 0.62) * 18 : 30 + Math.sin(index * 0.55) * 18
+          const rot = isRight ? 38 + (index % 2 ? -64 : 44) : -42 + (index % 2 ? 70 : -14)
+          return (
+            <ellipse
+              key={`success-${side}-${index}`}
+              cx={x}
+              cy={y}
+              rx="6"
+              ry={30 + (index % 3) * 10}
+              transform={`rotate(${rot} ${x} ${y})`}
+            />
+          )
+        })}
+        <path
+          d={isRight ? 'M 154 -20 Q 184 320 160 760 T 172 1520' : 'M 26 -20 Q 4 360 20 760 T 10 1520'}
+          fill="none"
+          stroke="rgba(223,195,134,0.18)"
+        />
+      </g>
+    </svg>
+  )
+}
+
+function StepFrame({
+  kicker,
+  title,
+  subtitle,
+  children,
+}: {
+  kicker: string
+  title: string
+  subtitle: string
+  children: ReactNode
+}) {
+  const bodyRef = useRef<HTMLDivElement | null>(null)
+  const [hasOverflow, setHasOverflow] = useState(false)
+  const [showTopFade, setShowTopFade] = useState(false)
+  const [showBottomFade, setShowBottomFade] = useState(false)
+
+  useEffect(() => {
+    const node = bodyRef.current
+    if (!node) return
+
+    const updateState = () => {
+      const overflow = node.scrollHeight - node.clientHeight > 12
+      const currentScroll = node.scrollTop
+      const maxScroll = node.scrollHeight - node.clientHeight
+
+      setHasOverflow(overflow)
+      setShowTopFade(overflow && currentScroll > 8)
+      setShowBottomFade(overflow && currentScroll < maxScroll - 8)
+    }
+
+    updateState()
+
+    node.addEventListener('scroll', updateState, { passive: true })
+    window.addEventListener('resize', updateState)
+
+    const resizeObserver = new ResizeObserver(() => updateState())
+    resizeObserver.observe(node)
+
+    return () => {
+      node.removeEventListener('scroll', updateState)
+      window.removeEventListener('resize', updateState)
+      resizeObserver.disconnect()
+    }
+  }, [children])
+
+  return (
+    <section className="wizard-panel wizard-animate">
+      <div className="wizard-panel-header">
+        <span className="wizard-kicker">{kicker}</span>
+        <h1 className="wizard-title">{title}</h1>
+        <p className="wizard-subtitle">{subtitle}</p>
+      </div>
+
+      <div
+        className={`wizard-panel-body-shell ${hasOverflow ? 'has-overflow' : ''} ${showTopFade ? 'show-top-fade' : ''} ${showBottomFade ? 'show-bottom-fade' : ''}`}
+      >
+        <div ref={bodyRef} className="wizard-panel-body">
+          {children}
+        </div>
+
+        {showBottomFade ? (
+          <button
+            type="button"
+            className="wizard-scroll-hint"
+            onClick={() => bodyRef.current?.scrollBy({ top: 240, behavior: 'smooth' })}
+          >
+            <span>Deslizá para ver más</span>
+            <ChevronDown size={15} />
+          </button>
+        ) : null}
+      </div>
+    </section>
+  )
+}
+
 export default function ReservaTurnoPage() {
   const navigate = useNavigate()
   const usuario = useAuthStore((s) => s.usuario)
+  const showCouponLibrary = true
+  const serviceSectionRef = useRef<HTMLDivElement | null>(null)
   const [step, setStep] = useState<WizardStep>(0)
   const [selectedSalon, setSelectedSalon] = useState<SelectedSalonId>(null)
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null)
@@ -327,7 +491,6 @@ export default function ReservaTurnoPage() {
   const [selectionMode, setSelectionMode] = useState<'combos' | 'zonas'>('zonas')
   const [guestData, setGuestData] = useState<GuestData>(DEFAULT_GUEST)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [progressMerged, setProgressMerged] = useState(false)
   const [headerHidden, setHeaderHidden] = useState(false)
 
   useEffect(() => {
@@ -358,7 +521,6 @@ export default function ReservaTurnoPage() {
 
     const handleScroll = () => {
       const currentY = window.scrollY
-      setProgressMerged(currentY > 120)
 
       if (currentY <= 12) {
         setHeaderHidden(false)
@@ -375,6 +537,22 @@ export default function ReservaTurnoPage() {
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent('etereo:public-header-visible', {
+        detail: { visible: step < 6 },
+      }),
+    )
+
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent('etereo:public-header-visible', {
+          detail: { visible: true },
+        }),
+      )
+    }
+  }, [step])
 
   const filteredSalones = SALONES.filter((salon) => !(selectedSex === 'Masculino' && salon.id === 'salon2'))
   const availableServices = selectedSalon
@@ -403,6 +581,10 @@ export default function ReservaTurnoPage() {
   const summaryItems = selectedCombo
     ? selectedCombo.items
     : selectedZones.map((zone) => zone.nombre)
+  const successWeekday = selectedDay.fechaLarga.split(' ')[0]
+  const successDateRest = selectedDay.fechaLarga.split(' ').slice(1).join(' ')
+  const successChannels = guestData.email.trim().length > 0 ? 'WhatsApp y email' : 'WhatsApp'
+  const successTimelineTime = `${selectedDay.etiqueta.toUpperCase()} · ${selectedTime} HS`
 
   const progressValue = (Math.min(step, 5) / 5) * 100
   const canProceed =
@@ -481,6 +663,19 @@ export default function ReservaTurnoPage() {
     setSelectedTime(null)
   }
 
+  function handleSalonSelect(salonId: SalonOption['id']) {
+    setSelectedSalon(salonId)
+    setSelectedServiceId(null)
+    setSelectedComboId(null)
+    setSelectedZoneIds([])
+    setSelectedDayId(null)
+    setSelectedTime(null)
+
+    window.setTimeout(() => {
+      serviceSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 120)
+  }
+
   function toggleZone(zoneId: string) {
     if (selectedComboId) return
     setSelectedZoneIds((current) =>
@@ -515,31 +710,49 @@ export default function ReservaTurnoPage() {
     setGuestData((current) => ({ ...current, [field]: value }))
   }
 
+  function restartReservation() {
+    setStep(0)
+    setSelectedSalon(null)
+    setSelectedServiceId(null)
+    setSelectedComboId(null)
+    setSelectedZoneIds([])
+    setSelectedDayId(null)
+    setSelectedTime(null)
+    setSelectedCouponId(null)
+    setCouponCode('')
+    setSummaryOpen(false)
+    setSelectionMode('zonas')
+    setIsSubmitting(false)
+    setHeaderHidden(false)
+    setGuestData(
+      usuario
+        ? {
+            nombre: usuario.nombre,
+            apellido: usuario.apellido,
+            telefono: usuario.telefono ?? '3492 55-7788',
+            email: usuario.email,
+            sexo: usuario.sexo === 'NoEspecifica' ? '' : usuario.sexo,
+          }
+        : DEFAULT_GUEST,
+    )
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   function renderStepContent() {
     if (step === 0) {
       return (
-        <section className="wizard-panel wizard-animate">
-          <span className="wizard-kicker">Paso 1</span>
-          <h1 className="wizard-title">Contanos sobre vos</h1>
-          <p className="wizard-subtitle">
-            Necesitamos tus datos y tu sexo para mostrarte solo los servicios que realmente se pueden reservar.
-          </p>
-
-          <div className="guest-form-card first-step-card">
-            <div className="identity-header">
-              <div>
-                <span className="section-label">{usuario ? 'Datos de tu cuenta' : 'Datos para la reserva'}</span>
-                <h2>{usuario ? 'Revisá y completá tu información' : 'Primero tus datos, después tu turno'}</h2>
-              </div>
-              {usuario ? <span className="identity-badge">Cliente registrado</span> : null}
-            </div>
-
+        <StepFrame
+          kicker="Paso 1"
+          title="Contanos sobre vos"
+          subtitle="Necesitamos tus datos y tu sexo para mostrarte solo los servicios que realmente se pueden reservar."
+        >
+          <div className="first-step-flat">
             <div className="guest-form-grid">
               <Input label="Nombre" value={guestData.nombre} onChange={(event) => updateGuestField('nombre', event.target.value)} />
               <Input label="Apellido" value={guestData.apellido} onChange={(event) => updateGuestField('apellido', event.target.value)} />
               <Input label="Teléfono" value={guestData.telefono} onChange={(event) => updateGuestField('telefono', event.target.value)} />
               <Input
-                label="Email opcional"
+                label="Email (opcional)"
                 value={guestData.email}
                 onChange={(event) => updateGuestField('email', event.target.value)}
                 placeholder="tuemail@ejemplo.com"
@@ -567,32 +780,23 @@ export default function ReservaTurnoPage() {
               <p>Usamos este dato para filtrar correctamente salones, servicios y zonas disponibles.</p>
             </div>
           </div>
-        </section>
+        </StepFrame>
       )
     }
 
     if (step === 1) {
       return (
-        <section className="wizard-panel wizard-animate">
-          <span className="wizard-kicker">Paso 2</span>
-          <h1 className="wizard-title">¿Qué servicio buscás?</h1>
-          <p className="wizard-subtitle">
-            Empezá por elegir el salón y después el tipo de experiencia que querés reservar.
-          </p>
-
+        <StepFrame
+          kicker="Paso 2"
+          title="¿Qué servicio buscás?"
+          subtitle="Empezá por elegir el salón y después el tipo de experiencia que querés reservar."
+        >
           <div className="salon-grid">
             {filteredSalones.map((salon) => (
               <button
                 key={salon.id}
                 type="button"
-                onClick={() => {
-                  setSelectedSalon(salon.id)
-                  setSelectedServiceId(null)
-                  setSelectedComboId(null)
-                  setSelectedZoneIds([])
-                  setSelectedDayId(null)
-                  setSelectedTime(null)
-                }}
+                onClick={() => handleSalonSelect(salon.id)}
                 className={`salon-card ${selectedSalon === salon.id ? 'selected' : ''}`}
                 style={botanicalPattern(0.12)}
               >
@@ -612,41 +816,46 @@ export default function ReservaTurnoPage() {
             ))}
           </div>
 
-          <div className="service-section">
-            <div className="section-heading">
-              <div>
-                <span className="section-label">Servicios disponibles</span>
-                <h2>
-                  {!selectedSalon
-                    ? 'Elegí primero un salón'
-                    : selectedSalon === 'salon1'
-                      ? 'Elegí tu ritual'
-                      : 'Elegí tu cambio de look'}
-                </h2>
+          {selectedSalon ? (
+            <div ref={serviceSectionRef} className="service-section">
+              <div className="section-heading">
+                <div>
+                  <span className="section-label">Servicios disponibles</span>
+                  <h2>{selectedSalon === 'salon1' ? 'Escogé un servicio' : 'Elegí tu cambio de look'}</h2>
+                </div>
+              </div>
+
+              <div className="service-grid">
+                {availableServices.map((service) => (
+                  <button
+                    key={service.id}
+                    type="button"
+                    onClick={() => handleServiceSelect(service.id)}
+                    className={`service-card ${selectedServiceId === service.id ? 'selected' : ''}`}
+                  >
+                    {(() => {
+                      const ServiceIcon = getServiceIcon(service.id)
+                      return (
+                        <span className="service-icon-wrap">
+                          <span className="service-icon">
+                            <ServiceIcon size={28} strokeWidth={1.8} />
+                          </span>
+                        </span>
+                      )
+                    })()}
+                    {selectedServiceId === service.id ? (
+                      <span className="service-selected-badge">
+                        <Check size={16} />
+                      </span>
+                    ) : null}
+                    <h3>{service.nombre}</h3>
+                    <p>{service.descripcion}</p>
+                  </button>
+                ))}
               </div>
             </div>
-
-            <div className="service-grid">
-              {availableServices.map((service) => (
-                <button
-                  key={service.id}
-                  type="button"
-                  onClick={() => handleServiceSelect(service.id)}
-                  className={`service-card ${selectedServiceId === service.id ? 'selected' : ''}`}
-                >
-                  {selectedServiceId === service.id ? (
-                    <span className="service-selected-badge">
-                      <Check size={16} />
-                    </span>
-                  ) : null}
-                  <span className="service-emoji">{service.icono}</span>
-                  <h3>{service.nombre}</h3>
-                  <p>{service.descripcion}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        </section>
+          ) : null}
+        </StepFrame>
       )
     }
 
@@ -659,11 +868,11 @@ export default function ReservaTurnoPage() {
       )
 
       return (
-        <section className="wizard-panel wizard-animate">
-          <span className="wizard-kicker">Paso 3</span>
-          <h1 className="wizard-title">Seleccioná tus zonas</h1>
-          <p className="wizard-subtitle">Elegí un combo o armá la sesión con las zonas que quieras.</p>
-
+        <StepFrame
+          kicker="Paso 3"
+          title="Seleccioná tus zonas"
+          subtitle="Elegí un combo o armá la sesión con las zonas que quieras."
+        >
           {visibleCombos.length > 0 ? (
             <div className="mobile-switcher">
               <button
@@ -716,10 +925,10 @@ export default function ReservaTurnoPage() {
                             <span className="combo-kicker">Selección curada</span>
                           </div>
                         </div>
-                        <div className="combo-meta">
-                          <span>{formatCurrency(combo.precio)}</span>
-                          <small>~{combo.duracionMin} min</small>
-                        </div>
+                      </div>
+                      <div className="combo-meta-row">
+                        <span className="combo-price">{formatCurrency(combo.precio)}</span>
+                        <small className="combo-duration">~{combo.duracionMin} min</small>
                       </div>
                       <p>{combo.detalle}</p>
                     </div>
@@ -780,21 +989,20 @@ export default function ReservaTurnoPage() {
               </div>
             </div>
           </div>
-        </section>
+        </StepFrame>
       )
     }
 
     if (step === 3) {
-      const rows = Array.from({ length: 8 }, (_, index) => `${9 + Math.floor(index / 2)}:${index % 2 === 0 ? '00' : '30'}`)
+      const availableDays = AVAILABILITY.filter((day) => day.slots.some((slot) => slot.disponible))
+      const visibleSlots = selectedDayId ? selectedDay.slots.filter((slot) => slot.disponible) : []
 
       return (
-        <section className="wizard-panel wizard-animate">
-          <span className="wizard-kicker">Paso 4</span>
-          <h1 className="wizard-title">Elegí fecha y horario</h1>
-          <p className="wizard-subtitle">
-            Simulamos disponibilidad en bloques de 30 minutos para que el solapamiento sea más eficiente.
-          </p>
-
+        <StepFrame
+          kicker="Paso 4"
+          title="Elegí fecha y horario"
+          subtitle="Simulamos disponibilidad en bloques de 30 minutos para que el solapamiento sea más eficiente."
+        >
           <div className="week-nav">
             <button type="button">
               <ChevronLeft size={18} />
@@ -809,7 +1017,7 @@ export default function ReservaTurnoPage() {
 
           <div className="desktop-schedule">
             <div className="day-card-row">
-              {AVAILABILITY.map((day) => (
+              {availableDays.map((day) => (
                 <button
                   key={day.id}
                   type="button"
@@ -825,31 +1033,32 @@ export default function ReservaTurnoPage() {
               ))}
             </div>
 
-            <div className="selected-day-panel">
-              <div className="selected-day-copy">
-                <span className="section-label">Disponibilidad</span>
-                <h2>{selectedDayId ? selectedDay.fechaLarga : 'Elegí un día para ver horarios'}</h2>
-              </div>
+            {selectedDayId ? (
+              <div className="selected-day-panel">
+                <div className="selected-day-copy">
+                  <span className="section-label">Disponibilidad</span>
+                  <h2>{selectedDay.fechaLarga}</h2>
+                </div>
 
-              <div className="slot-grid">
-                {(selectedDayId ? selectedDay.slots : rows.map((hora) => ({ hora, disponible: false }))).map((slot) => (
-                  <button
-                    key={slot.hora}
-                    type="button"
-                    className={`slot-chip ${slot.disponible ? 'available' : 'disabled'} ${selectedTime === slot.hora ? 'selected' : ''}`}
-                    disabled={!selectedDayId || !slot.disponible}
-                    onClick={() => setSelectedTime(slot.hora)}
-                  >
-                    {slot.disponible ? slot.hora : '—'}
-                  </button>
-                ))}
+                <div className="slot-grid">
+                  {visibleSlots.map((slot) => (
+                    <button
+                      key={slot.hora}
+                      type="button"
+                      className={`slot-chip available ${selectedTime === slot.hora ? 'selected' : ''}`}
+                      onClick={() => setSelectedTime(slot.hora)}
+                    >
+                      {slot.hora}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : null}
           </div>
 
           <div className="mobile-schedule">
             <div className="mobile-day-tabs">
-              {AVAILABILITY.slice(0, 3).map((day) => (
+              {availableDays.map((day) => (
                 <button
                   key={day.id}
                   type="button"
@@ -865,36 +1074,31 @@ export default function ReservaTurnoPage() {
             </div>
 
             <div className="mobile-slot-list">
-              {selectedDay.slots.map((slot) => (
+              {visibleSlots.map((slot) => (
                 <button
                   key={`${selectedDay.id}-${slot.hora}`}
                   type="button"
-                  className={`mobile-slot ${slot.disponible ? '' : 'disabled'} ${selectedTime === slot.hora ? 'selected' : ''}`}
-                  disabled={!slot.disponible}
+                  className={`mobile-slot ${selectedTime === slot.hora ? 'selected' : ''}`}
                   onClick={() => setSelectedTime(slot.hora)}
                 >
                   <span>{slot.hora}</span>
-                  <small>{slot.disponible ? 'Disponible' : 'No disponible'}</small>
+                  <small>Disponible</small>
                 </button>
               ))}
             </div>
           </div>
-        </section>
+        </StepFrame>
       )
     }
 
     if (step === 4) {
       return (
-        <section className="wizard-panel wizard-animate">
-          <span className="wizard-kicker">Paso 5</span>
-          <h1 className="wizard-title">¿Tenés un cupón?</h1>
-          <p className="wizard-subtitle">
-            {usuario
-              ? 'Podés aplicar uno de tus cupones guardados o ingresar otro código.'
-              : 'Como invitada, podés ingresar un código promocional manualmente.'}
-          </p>
-
-          {usuario ? (
+        <StepFrame
+          kicker="Paso 5"
+          title="¿Tenés un cupón?"
+          subtitle="Elegí un cupón disponible o ingresá un código manualmente."
+        >
+          {showCouponLibrary ? (
             <div className="coupon-section">
               <div className="section-heading">
                 <div>
@@ -908,23 +1112,30 @@ export default function ReservaTurnoPage() {
                   const applied = selectedCouponId === coupon.id
                   return (
                     <article key={coupon.id} className={`coupon-card ${applied ? 'selected' : ''}`}>
-                      <div className="coupon-top">
-                        <span className="coupon-icon">🎟️</span>
-                        <div>
-                          <h3>{coupon.codigo}</h3>
-                          <p>{coupon.descripcion}</p>
-                        </div>
+                      <div className="coupon-ticket-value">
+                        <strong>{coupon.valor}%</strong>
+                        <span>OFF</span>
                       </div>
-                      <div className="coupon-bottom">
-                        <small>Vence: {coupon.vence}</small>
+                      <div className="coupon-ticket-body">
+                        <div className="coupon-copy">
+                          <div className="coupon-code-row">
+                            <h3>{coupon.codigo}</h3>
+                          </div>
+                          <p>{coupon.descripcion}</p>
+                          <div className="coupon-tags">
+                            <small>{coupon.codigo === 'LASER20' ? 'Solo para depilación láser' : 'Válido para todos los servicios'}</small>
+                            <small>Vence {coupon.vence}</small>
+                          </div>
+                        </div>
                         <button
                           type="button"
+                          className="coupon-apply-btn"
                           onClick={() => {
                             setCouponCode(coupon.codigo)
                             setSelectedCouponId(coupon.id)
                           }}
                         >
-                          {applied ? '✓ Aplicado' : 'Aplicar'}
+                          {applied ? 'Aplicado' : 'Aplicar'}
                         </button>
                       </div>
                     </article>
@@ -935,55 +1146,104 @@ export default function ReservaTurnoPage() {
           ) : null}
 
           <div className="manual-coupon-card">
-            <div>
-              <span className="section-label">{usuario ? 'O ingresá un código' : 'Código promocional'}</span>
-              <h2>{usuario ? '¿Tenés otro cupón?' : 'Si tenés un código, ingresalo acá'}</h2>
+            <div className="manual-coupon-divider">
+              <span>{showCouponLibrary ? 'O ingresá un código' : 'Código promocional'}</span>
             </div>
 
             <div className="manual-coupon-row">
-              <Input value={couponCode} onChange={(event) => setCouponCode(event.target.value)} placeholder="Ej: LASER20" />
+              <Input value={couponCode} onChange={(event) => setCouponCode(event.target.value)} placeholder="CÓDIGO DE CUPÓN" />
               <Button
                 variant="secondary"
                 onClick={() => handleCouponApply(couponCode)}
-                leftIcon={<Ticket size={16} />}
               >
                 Aplicar
               </Button>
             </div>
 
-            <button type="button" className="skip-coupon-btn" onClick={() => setSelectedCouponId(null)}>
-              Continuar sin cupón
-            </button>
+            <p className="manual-coupon-help">Los códigos no son acumulables con otras promociones activas.</p>
           </div>
-        </section>
+        </StepFrame>
       )
     }
 
     if (step === 5) {
       return (
-        <section className="wizard-panel wizard-animate">
-          <span className="wizard-kicker">Paso 6</span>
-          <h1 className="wizard-title">Confirmá tu turno</h1>
-          <p className="wizard-subtitle">Revisá el detalle final antes de dejar la solicitud enviada.</p>
+        <StepFrame
+          kicker="Paso 6"
+          title="Confirmá tu turno"
+          subtitle="Revisá el detalle final antes de dejar la solicitud enviada."
+        >
+          <div className="confirmation-flow">
+            <div className="confirmation-section">
+              <div className="confirmation-detail-row">
+                <MapPin size={18} />
+                <div>
+                  <span className="confirmation-label">Salón</span>
+                  <strong>{selectedSalon === 'salon1' ? 'Salón 1 - Estética & bienestar' : 'Salón 2 - Peluquería'}</strong>
+                </div>
+              </div>
+            </div>
 
-          <div className="confirmation-card">
-            <h2>Resumen de tu reserva</h2>
-            <div className="confirmation-list">
-              <div><MapPin size={18} /> <span>{selectedSalon === 'salon1' ? 'Salón 1' : 'Salón 2'}</span></div>
-              <div><Scissors size={18} /> <span>{selectedService.nombre}</span></div>
-              <div><Sparkles size={18} /> <span>{summaryItems.join(' · ')}</span></div>
-              <div><UserRound size={18} /> <span>Operaria: Te informaremos quién te atenderá al confirmar tu turno</span></div>
-              <div><CalendarDays size={18} /> <span>{selectedDay.fechaLarga}, {selectedTime} hs</span></div>
-              <div><Clock3 size={18} /> <span>~{estimatedDuration} minutos</span></div>
+            <div className="confirmation-section">
+              <div className="confirmation-detail-row">
+                <Scissors size={18} />
+                <div>
+                  <span className="confirmation-label">Servicio</span>
+                  <strong>{selectedService.nombre}</strong>
+                  <span className="confirmation-secondary">{summaryItems.join(' · ')}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="confirmation-section">
+              <div className="confirmation-detail-row">
+                <UserRound size={18} />
+                <div>
+                  <span className="confirmation-label">Operaria</span>
+                  <strong>Te informaremos quién te atenderá al confirmar tu turno</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="confirmation-section">
+              <div className="confirmation-detail-row">
+                <CalendarDays size={18} />
+                <div>
+                  <span className="confirmation-label">Fecha y hora</span>
+                  <strong>{selectedDay.fechaLarga}, {selectedTime} hs</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="confirmation-section">
+              <div className="confirmation-detail-row">
+                <Clock3 size={18} />
+                <div>
+                  <span className="confirmation-label">Duración estimada</span>
+                  <strong>~{estimatedDuration} minutos</strong>
+                </div>
+              </div>
             </div>
 
             <div className="confirmation-total">
               <div><span>Subtotal</span><strong>{formatCurrency(subtotal)}</strong></div>
               {automaticDiscountValue > 0 ? (
-                <div><span>Descuento {automaticDiscountPct}%</span><strong>-{formatCurrency(automaticDiscountValue)}</strong></div>
+                <div className="discount-line">
+                  <div className="discount-copy">
+                    <span>Descuento {automaticDiscountPct}%</span>
+                    <small>Aplicado automáticamente por elegir 3 o más zonas.</small>
+                  </div>
+                  <strong>-{formatCurrency(automaticDiscountValue)}</strong>
+                </div>
               ) : null}
               {couponDiscountValue > 0 ? (
-                <div><span>Cupón {couponDiscountPct}%</span><strong>-{formatCurrency(couponDiscountValue)}</strong></div>
+                <div className="discount-line">
+                  <div className="discount-copy">
+                    <span>{selectedCoupon ? `Cupón ${selectedCoupon.codigo}` : `Cupón ${couponDiscountPct}%`}</span>
+                    <small>{selectedCoupon ? `Promoción aplicada desde tu cupón ${selectedCoupon.codigo}.` : 'Promoción aplicada desde un cupón activo.'}</small>
+                  </div>
+                  <strong>-{formatCurrency(couponDiscountValue)}</strong>
+                </div>
               ) : null}
               <div className="grand-total"><span>Total</span><strong>{formatCurrency(total)}</strong></div>
             </div>
@@ -993,44 +1253,126 @@ export default function ReservaTurnoPage() {
             <BadgePercent size={18} />
             <p>Recordá que las cancelaciones con menos de 24 horas de anticipación tienen un cargo del 50% del servicio.</p>
           </div>
-        </section>
+        </StepFrame>
       )
     }
 
     return (
-      <section className="success-screen wizard-animate" style={botanicalPattern(0.18)}>
-        <div className="success-icon-wrap">
-          <div className="success-icon">
-            <Flower2 size={34} />
-            <Check size={24} />
+      <section className="success-screen wizard-animate">
+        <SuccessBotanicalSide side="left" />
+        <SuccessBotanicalSide side="right" />
+
+        <div className="success-stars" aria-hidden="true">
+          {SUCCESS_STAR_POSITIONS.map(([top, left], index) => (
+            <i key={`${top}-${left}-${index}`} style={{ top: `${top}%`, left: `${left}%` }} />
+          ))}
+        </div>
+
+        <div className="success-hero">
+          <div className="success-mark">
+            <Check size={36} />
+          </div>
+
+          <div className="success-eyebrow-row">
+            <span className="ln" />
+            <span className="success-eyebrow">Solicitud recibida</span>
+            <span className="ln" />
+          </div>
+
+          <h1 className="success-title">
+            Tu turno está <em>en camino</em>
+          </h1>
+          <p className="success-subtitle">
+            Estamos confirmando con la operaria. Te avisamos por <strong>{successChannels}</strong> en los próximos minutos.
+          </p>
+        </div>
+
+        <div className="success-card">
+          <div className="success-card-left">
+            <div className="success-date-big">
+              <em>{successWeekday}</em> {successDateRest}
+            </div>
+            <div className="success-date-sub">
+              {selectedTime} hs · duración ~{estimatedDuration} min
+            </div>
+
+            <div className="success-detail-row">
+              <span className="success-detail-ic"><Scissors size={16} /></span>
+              <span className="success-detail-lab">Servicio</span>
+              <span className="success-detail-v">{selectedService.nombre}</span>
+            </div>
+
+            <div className="success-detail-row">
+              <span className="success-detail-ic"><UserRound size={16} /></span>
+              <span className="success-detail-lab">Operaria</span>
+              <span className="success-detail-v">A confirmar</span>
+            </div>
+
+            <div className="success-detail-row">
+              <span className="success-detail-ic"><MapPin size={16} /></span>
+              <span className="success-detail-lab">Salón</span>
+              <span className="success-detail-v">Etéreo · Moreno 212 · 1A</span>
+            </div>
+
+            <div className="success-detail-row">
+              <span className="success-detail-ic"><Clock3 size={16} /></span>
+              <span className="success-detail-lab">Total</span>
+              <span className="success-detail-v">{formatCurrency(total)}</span>
+            </div>
+          </div>
+
+          <div className="success-card-divider" />
+
+          <div className="success-card-right">
+            <h4 className="success-tl-title">Qué sigue</h4>
+
+            <div className="success-tl">
+              <div className="success-ts">
+                <div className="success-ts-t">Recibimos tu solicitud</div>
+                <div className="success-ts-d">Tu pedido ya está en revisión con la operaria.</div>
+                <span className="success-when">Recién</span>
+              </div>
+
+              <div className="success-ts pending">
+                <div className="success-ts-t">Confirmación por {successChannels}</div>
+                <div className="success-ts-d">Te avisamos quién te va a atender y confirmamos el horario.</div>
+                <span className="success-when">En ~30 min</span>
+              </div>
+
+              <div className="success-ts pending">
+                <div className="success-ts-t">¡Nos vemos en el salón!</div>
+                <div className="success-ts-d">Llegá 5 minutos antes. Tu operaria ya te va a estar esperando.</div>
+                <span className="success-when">{successTimelineTime}</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <h1>¡Turno solicitado!</h1>
-        <p>
-          Tu turno está pendiente de confirmación. Te avisaremos por WhatsApp cuando esté listo.
-        </p>
-
-        <div className="success-detail-card">
-          <div><CalendarDays size={18} /> <span>{selectedDay.fechaLarga} a las {selectedTime} hs</span></div>
-          <div><Scissors size={18} /> <span>{selectedService.nombre}</span></div>
-          <div><UserRound size={18} /> <span>Operaria a confirmar, te avisamos por WhatsApp</span></div>
-          <div><Clock3 size={18} /> <span>~{estimatedDuration} min · {formatCurrency(total)}</span></div>
+        <div className="success-actions">
+          <button type="button" className="success-action">
+            <span className="ic"><CalendarDays size={22} /></span>
+            <span className="t">Agendar</span>
+            <span className="d">Google / Apple</span>
+          </button>
+          <button type="button" className="success-action">
+            <span className="ic"><MapPin size={22} /></span>
+            <span className="t">Cómo llegar</span>
+            <span className="d">Ver en Maps</span>
+          </button>
+          <button type="button" className="success-action">
+            <span className="ic"><MessageCircle size={22} /></span>
+            <span className="t">Contactanos</span>
+            <span className="d">WhatsApp</span>
+          </button>
         </div>
 
-        <div className="success-actions">
-          {usuario ? (
-            <Button variant="outlined" size="lg" onClick={() => navigate('/mis-turnos')}>
-              Ver mis turnos
-            </Button>
-          ) : (
-            <Button variant="outlined" size="lg" onClick={() => navigate('/')}>
-              Volver al inicio
-            </Button>
-          )}
-          <Button variant="outlined" size="lg" onClick={() => setStep(0)}>
+        <div className="success-foot">
+          <button type="button" className="success-btn-ghost" onClick={restartReservation}>
             Reservar otro turno
-          </Button>
+          </button>
+          <button type="button" className="success-btn-primary" onClick={() => navigate('/')}>
+            Ver mis turnos <span className="ar">→</span>
+          </button>
         </div>
       </section>
     )
@@ -1038,44 +1380,70 @@ export default function ReservaTurnoPage() {
 
   return (
     <>
-      <main className="reserva-page">
+      <main className={`reserva-page ${step === 6 ? 'success-mode' : ''}`}>
         <div className="reserva-shell">
-          <div className={`progress-shell ${progressMerged ? 'merged' : ''} ${headerHidden ? 'header-hidden' : ''}`}>
-            <div className={`progress-card ${progressMerged ? 'merged' : ''}`}>
-              <div className="progress-line">
-                <span style={{ width: `${progressValue}%` }} />
-              </div>
-              <div className="progress-steps">
-                {STEP_LABELS.slice(0, 6).map((label, index) => {
-                  const completed = step > index
-                  const active = step === index || (step === 6 && index === 5)
-                  return (
-                    <div key={label} className="progress-step">
-                      <div className={`progress-node ${completed ? 'completed' : ''} ${active ? 'active' : ''}`}>
-                        {completed ? <Check size={15} /> : index + 1}
+          {step < 6 ? (
+            <div
+              className={`progress-shell ${headerHidden ? 'header-hidden' : ''}`}
+            >
+              <div className="progress-card">
+                <div className="progress-line">
+                  <span style={{ width: `${progressValue}%` }} />
+                </div>
+                <div className="progress-steps">
+                  {STEP_LABELS.slice(0, 6).map((label, index) => {
+                    const completed = step > index
+                    const active = step === index
+                    return (
+                      <div key={label} className="progress-step">
+                        <div className={`progress-node ${completed ? 'completed' : ''} ${active ? 'active' : ''}`}>
+                          {completed ? <Check size={15} /> : index + 1}
+                        </div>
+                        <span className={`progress-text ${completed ? 'completed' : ''} ${active ? 'active' : ''}`}>
+                          {label}
+                        </span>
                       </div>
-                      <span className={`progress-text ${completed ? 'completed' : ''} ${active ? 'active' : ''}`}>
-                        {label}
-                      </span>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </div>
               </div>
             </div>
-          </div>
+          ) : null}
 
-          <div className={`content-shell ${step <= 1 ? 'no-summary' : ''} ${progressMerged ? 'merged' : ''}`}>
-            <div className={`content-column ${step === 6 ? 'full-width' : ''} ${progressMerged ? 'merged' : ''}`}>{renderStepContent()}</div>
+          <div
+            className={`content-shell ${step <= 1 || step === 5 || step === 6 ? 'no-summary' : ''}`}
+          >
+            <div className={`content-column ${step === 6 ? 'full-width' : ''}`}>
+              {renderStepContent()}
+              {step < 6 ? (
+                <div className="wizard-footer">
+                  <div className="footer-actions">
+                    <Button variant="ghost" size="lg" onClick={goBack} disabled={step === 0} leftIcon={<ArrowLeft size={16} />}>
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="lg"
+                      onClick={goNext}
+                      disabled={!canProceed}
+                      loading={isSubmitting}
+                      rightIcon={<ArrowRight size={16} />}
+                    >
+                      {step === 5 ? 'Confirmar turno' : 'Siguiente'}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
 
-            {step > 1 && step < 6 ? (
-              <aside className={`summary-column ${progressMerged ? 'merged' : ''}`}>
-                <div className={`summary-card ${progressMerged ? 'merged' : ''}`}>
+            {step > 1 && step < 5 ? (
+              <aside className={`summary-column ${headerHidden ? 'header-hidden' : ''}`}>
+                <div className="summary-card">
                   <div className="summary-header">
                     <div>
                       <span className="section-label">Tu reserva</span>
-                      <h2>Resumen vivo</h2>
+                      <h2>Tu reserva</h2>
                     </div>
-                    <Gift size={18} />
                   </div>
 
                   <div className="summary-items">
@@ -1090,18 +1458,20 @@ export default function ReservaTurnoPage() {
                   <div className="summary-divider" />
 
                   {automaticDiscountValue > 0 ? (
-                    <div className="summary-line muted">
+                    <div className="summary-line discount">
                       <span>Descuento {automaticDiscountPct}%</span>
                       <strong>-{formatCurrency(automaticDiscountValue)}</strong>
                     </div>
                   ) : null}
 
                   {couponDiscountValue > 0 ? (
-                    <div className="summary-line muted">
-                      <span>Cupón {couponDiscountPct}%</span>
+                    <div className="summary-line discount">
+                      <span>{selectedCoupon ? `Cupón ${selectedCoupon.codigo}` : `Cupón ${couponDiscountPct}%`}</span>
                       <strong>-{formatCurrency(couponDiscountValue)}</strong>
                     </div>
                   ) : null}
+
+                  {(automaticDiscountValue > 0 || couponDiscountValue > 0) ? <div className="summary-divider" /> : null}
 
                   <div className="summary-total">
                     <span>Total</span>
@@ -1110,46 +1480,15 @@ export default function ReservaTurnoPage() {
 
                   <div className="summary-meta">
                     <span>⏱ Duración estimada: ~{estimatedDuration} min</span>
-                    <span>{summaryItems.length} selección{summaryItems.length === 1 ? '' : 'es'}</span>
                   </div>
 
-                  <div className="summary-note">
-                    <Sparkles size={15} />
-                    <span>
-                      {selectedCombo
-                        ? 'Pack seleccionado. La sesión queda agrupada en una sola reserva.'
-                        : automaticDiscountPct > 0
-                          ? 'Descuento automático aplicado por cantidad de zonas.'
-                          : 'El resumen se actualiza a medida que elegís.'}
-                    </span>
-                  </div>
                 </div>
               </aside>
             ) : null}
           </div>
-
-          {step < 6 ? (
-            <div className="wizard-footer">
-              <div className="footer-actions">
-                <Button variant="ghost" size="lg" onClick={goBack} disabled={step === 0} leftIcon={<ArrowLeft size={16} />}>
-                  Anterior
-                </Button>
-                <Button
-                  variant="primary"
-                  size="lg"
-                  onClick={goNext}
-                  disabled={!canProceed}
-                  loading={isSubmitting}
-                  rightIcon={<ArrowRight size={16} />}
-                >
-                  {step === 5 ? 'Confirmar turno' : 'Siguiente'}
-                </Button>
-              </div>
-            </div>
-          ) : null}
         </div>
 
-        {step > 1 && step < 6 ? (
+        {step > 1 && step < 5 ? (
           <>
             <button type="button" className="mobile-summary-bar" onClick={() => setSummaryOpen(true)}>
               <span>{summaryItems.length} zonas · ~{estimatedDuration} min · {formatCurrency(total)}</span>
@@ -1164,7 +1503,7 @@ export default function ReservaTurnoPage() {
                   <div className="summary-header">
                     <div>
                       <span className="section-label">Tu reserva</span>
-                      <h2>Resumen</h2>
+                      <h2>Tu reserva</h2>
                     </div>
                     <button type="button" onClick={() => setSummaryOpen(false)}>Cerrar</button>
                   </div>
@@ -1204,43 +1543,46 @@ export default function ReservaTurnoPage() {
         }
 
         .progress-shell {
+          --progress-top: 118px;
           position: sticky;
-          top: 118px;
+          top: var(--progress-top);
           z-index: 20;
           margin-bottom: 26px;
-          transition: margin-bottom 280ms ease, top 420ms cubic-bezier(0.22, 1, 0.36, 1);
+          transition: top 420ms cubic-bezier(0.22, 1, 0.36, 1);
         }
 
-        .progress-shell.merged {
-          margin-bottom: -18px;
+        .progress-shell::before {
+          content: '';
+          position: absolute;
+          left: -24px;
+          right: -24px;
+          top: calc(var(--progress-top) * -1);
+          height: var(--progress-top);
+          background: var(--color-tertiary);
+          border-bottom-left-radius: 28px;
+          border-bottom-right-radius: 28px;
+          pointer-events: none;
+          z-index: 0;
         }
 
         .progress-shell.header-hidden {
-          top: 16px;
+          --progress-top: 16px;
         }
 
         .progress-card {
           position: relative;
-          isolation: isolate;
+          z-index: 1;
           overflow: hidden;
           padding: 24px 22px 18px;
           border-radius: 24px;
-          background: rgba(255,255,255,0.96);
+          background: #fff;
           border: 1px solid rgba(232,224,216,0.9);
           box-shadow: 0 12px 36px rgba(74,55,40,0.09);
-          backdrop-filter: blur(16px);
           transition:
             border-radius 280ms ease,
             box-shadow 280ms ease,
             border-color 280ms ease,
             background 280ms ease;
-        }
-
-        .progress-card.merged {
-          border-bottom-left-radius: 0;
-          border-bottom-right-radius: 0;
-          background: rgba(255,255,255,0.985);
-          box-shadow: 0 14px 30px rgba(74,55,40,0.06);
         }
 
         .progress-line {
@@ -1323,12 +1665,7 @@ export default function ReservaTurnoPage() {
           display: grid;
           grid-template-columns: minmax(0, 1fr) 320px;
           gap: 26px;
-          align-items: start;
-          transition: margin-top 240ms ease;
-        }
-
-        .content-shell.merged {
-          margin-top: 0;
+          align-items: stretch;
         }
 
         .content-shell.no-summary {
@@ -1339,36 +1676,12 @@ export default function ReservaTurnoPage() {
           grid-column: 1 / -1;
         }
 
-        .content-column.merged > .wizard-panel:first-child {
-          position: relative;
-          overflow: hidden;
-          border-top-left-radius: 0;
-          border-top-right-radius: 0;
-          border-top: none;
-          box-shadow: 0 18px 38px rgba(74,55,40,0.08);
-          padding-top: 72px;
-        }
-
-        .summary-card.merged {
-          position: relative;
-          overflow: hidden;
-          border-top-left-radius: 0;
-          border-top-right-radius: 0;
-          border-top: none;
-          padding-top: 72px;
-        }
-
-        .content-column.merged > .wizard-panel:first-child::before,
-        .summary-card.merged::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 72px;
-          background: linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(255,255,255,0.985) 58%, rgba(255,255,255,0.9) 82%, rgba(255,255,255,0) 100%);
-          pointer-events: none;
-          z-index: 2;
+        .content-column {
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+          min-height: 0;
+          height: 100%;
         }
 
         .wizard-panel,
@@ -1384,11 +1697,90 @@ export default function ReservaTurnoPage() {
         }
 
         .wizard-panel {
-          padding: 34px;
+          padding: 0;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          flex: 1 1 auto;
+          min-height: 0;
         }
 
         .wizard-animate {
           animation: wizardSlideIn 320ms ease;
+        }
+
+        .wizard-panel-header {
+          padding: 34px 34px 10px;
+          background: linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.92) 100%);
+        }
+
+        .wizard-panel-body-shell {
+          position: relative;
+          min-height: 0;
+          flex: 1 1 auto;
+          overflow: hidden;
+        }
+
+        .wizard-panel-body-shell::before,
+        .wizard-panel-body-shell::after {
+          content: '';
+          position: absolute;
+          left: 0;
+          right: 0;
+          height: 42px;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 180ms ease;
+          z-index: 2;
+        }
+
+        .wizard-panel-body-shell::before {
+          top: 0;
+          background: linear-gradient(180deg, rgba(255,255,255,0.985) 0%, rgba(255,255,255,0.82) 44%, rgba(255,255,255,0) 100%);
+        }
+
+        .wizard-panel-body-shell::after {
+          bottom: 0;
+          background: linear-gradient(0deg, rgba(255,255,255,0.985) 0%, rgba(255,255,255,0.82) 44%, rgba(255,255,255,0) 100%);
+        }
+
+        .wizard-panel-body-shell.show-top-fade::before,
+        .wizard-panel-body-shell.show-bottom-fade::after {
+          opacity: 1;
+        }
+
+        .wizard-panel-body {
+          padding: 10px 34px 34px;
+          min-height: 0;
+        }
+
+        .first-step-flat {
+          display: grid;
+          gap: 16px;
+        }
+
+        .wizard-scroll-hint {
+          position: absolute;
+          left: 50%;
+          bottom: 16px;
+          transform: translateX(-50%);
+          border: none;
+          border-radius: 9999px;
+          padding: 8px 14px;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          background: rgba(255,255,255,0.94);
+          color: var(--color-secondary);
+          font-family: var(--font-body);
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          box-shadow: 0 10px 24px rgba(74,55,40,0.1);
+          cursor: pointer;
+          z-index: 3;
+          animation: wizardHintFloat 1.8s ease-in-out infinite;
         }
 
         .wizard-kicker,
@@ -1429,7 +1821,7 @@ export default function ReservaTurnoPage() {
         }
 
         .salon-grid {
-          margin-top: 32px;
+          margin-top: 18px;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 22px;
         }
@@ -1476,8 +1868,10 @@ export default function ReservaTurnoPage() {
         }
 
         .salon-card.selected {
-          border-color: rgba(197,160,89,0.95);
-          box-shadow: 0 24px 44px rgba(44,31,20,0.24);
+          border-color: rgba(240,211,151,1);
+          box-shadow:
+            0 24px 44px rgba(44,31,20,0.24),
+            0 0 0 6px rgba(240,211,151,0.38);
           transform: translateY(-2px);
         }
 
@@ -1551,7 +1945,7 @@ export default function ReservaTurnoPage() {
 
         .service-section,
         .coupon-section {
-          margin-top: 34px;
+          margin-top: 24px;
         }
 
         .section-heading,
@@ -1581,16 +1975,16 @@ export default function ReservaTurnoPage() {
 
         .service-card {
           text-align: left;
-          padding: 28px 24px 24px;
+          padding: 24px 22px 22px;
           border-radius: 26px;
           background: linear-gradient(180deg, #fffefd 0%, #fffdfa 100%);
           border: 1px solid rgba(232,224,216,0.95);
           cursor: pointer;
           transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease;
-          min-height: 270px;
+          min-height: 238px;
           display: flex;
           flex-direction: column;
-          align-items: center;
+          align-items: flex-start;
           justify-content: flex-start;
           position: relative;
           overflow: hidden;
@@ -1635,30 +2029,40 @@ export default function ReservaTurnoPage() {
           box-shadow: 0 10px 22px rgba(197,160,89,0.22);
         }
 
-        .service-emoji {
+        .service-icon-wrap {
+          margin-top: 6px;
+          margin-bottom: 18px;
+        }
+
+        .service-icon {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          width: 110px;
-          height: 110px;
+          width: 86px;
+          height: 86px;
           border-radius: 9999px;
           background: rgba(245,239,230,0.92);
-          font-size: 42px;
           box-shadow: inset 0 0 0 1px rgba(232,224,216,0.9);
-          margin-top: 8px;
+          color: rgba(92,70,51,0.92);
         }
 
-        .service-card.selected .service-emoji {
+        .service-card.selected .service-icon {
           background: linear-gradient(180deg, #d4ac62 0%, #c69b4f 100%);
           color: white;
           box-shadow: 0 16px 28px rgba(197,160,89,0.22);
+        }
+
+        .service-card h3 {
+          font-size: 28px;
+          line-height: 1.06;
+          color: var(--color-text-primary);
+          text-wrap: balance;
         }
 
         .service-card p,
         .combo-card p,
         .coupon-card p,
         .zone-card p,
-        .summary-note span,
         .policy-card p,
         .success-detail-card span {
           margin: 0;
@@ -1668,28 +2072,35 @@ export default function ReservaTurnoPage() {
           color: var(--color-text-secondary);
         }
 
+        .service-card p {
+          margin-top: 14px;
+          max-width: 260px;
+          font-size: 15px;
+          line-height: 1.7;
+        }
+
         .service-card h3 {
           margin-top: 26px;
           font-family: var(--font-body);
           font-size: 20px;
           font-weight: 700;
-          text-align: center;
+          text-align: left;
           color: var(--color-text-primary);
         }
 
         .service-card p {
-          margin-top: 14px;
-          max-width: 240px;
+          margin-top: 12px;
+          max-width: 250px;
           font-size: 15px;
           line-height: 1.7;
-          text-align: center;
+          text-align: left;
         }
 
         .selection-layout {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 22px;
-          margin-top: 28px;
+          margin-top: 18px;
           align-items: start;
         }
 
@@ -1774,10 +2185,11 @@ export default function ReservaTurnoPage() {
 
         .combo-selected-badge {
           position: absolute;
-          top: 16px;
-          right: 16px;
+          top: 22px;
+          right: 22px;
           width: 34px;
           height: 34px;
+          flex: 0 0 auto;
           border-radius: 9999px;
           display: inline-flex;
           align-items: center;
@@ -1796,7 +2208,9 @@ export default function ReservaTurnoPage() {
 
         .combo-title-row {
           justify-content: space-between;
+          align-items: start;
           gap: 18px;
+          padding-right: 64px;
         }
 
         .combo-title-left {
@@ -1817,17 +2231,15 @@ export default function ReservaTurnoPage() {
           filter: saturate(1.08);
         }
 
-        .combo-meta {
-          text-align: right;
-          min-width: fit-content;
+        .combo-meta-row {
           display: flex;
-          flex-direction: column;
-          align-items: flex-end;
-          gap: 4px;
-          padding-right: 46px;
+          align-items: baseline;
+          gap: 14px;
+          margin-top: 16px;
+          flex-wrap: wrap;
         }
 
-        .combo-meta span,
+        .combo-price,
         .summary-total strong,
         .grand-total strong,
         .confirmation-total strong {
@@ -1837,10 +2249,10 @@ export default function ReservaTurnoPage() {
           color: var(--color-text-primary);
         }
 
-        .combo-meta small,
+        .combo-duration,
         .summary-meta,
         .summary-line,
-        .coupon-bottom small,
+        .coupon-tags small,
         .mobile-slot small {
           font-family: var(--font-body);
           color: var(--color-text-muted);
@@ -1863,7 +2275,7 @@ export default function ReservaTurnoPage() {
         }
 
         .combo-card p {
-          margin-top: 18px;
+          margin-top: 14px;
           max-width: 420px;
           font-size: 15px;
           line-height: 1.65;
@@ -1996,7 +2408,7 @@ export default function ReservaTurnoPage() {
           align-items: center;
           justify-content: space-between;
           gap: 16px;
-          margin-top: 28px;
+          margin-top: 16px;
           padding: 16px 20px;
           border-radius: 20px;
           background: rgba(255,255,255,0.72);
@@ -2140,48 +2552,203 @@ export default function ReservaTurnoPage() {
         }
 
         .coupon-grid {
-          margin-top: 20px;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
+          margin-top: 14px;
+          grid-template-columns: minmax(0, 1fr);
+          gap: 22px;
         }
 
         .coupon-card {
-          flex-direction: column;
+          flex-direction: row;
+          align-items: stretch;
+          gap: 0;
+          padding: 0;
+          overflow: hidden;
+          min-height: 118px;
         }
 
-        .coupon-bottom {
+        .coupon-ticket-value {
+          width: 138px;
+          flex: 0 0 138px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          background: linear-gradient(180deg, #5d4331 0%, #463123 100%);
+          color: #d8b15f;
+          position: relative;
+          z-index: 1;
+        }
+
+        .coupon-ticket-value::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          right: -14px;
+          bottom: 0;
+          width: 28px;
+          background:
+            linear-gradient(to right, transparent 0 14px, #fff 14px 100%),
+            radial-gradient(circle at 14px 12px, #fff 0 7px, transparent 7.4px);
+          background-size: 100% 100%, 28px 24px;
+          background-repeat: no-repeat, repeat-y;
+          background-position: 0 0, 0 0;
+          pointer-events: none;
+        }
+
+        .coupon-ticket-value strong {
+          font-family: var(--font-heading);
+          font-size: 38px;
+          line-height: 0.9;
+          color: #d8b15f;
+        }
+
+        .coupon-ticket-value span {
+          font-family: var(--font-body);
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: 0.12em;
+          color: rgba(255,245,229,0.9);
+        }
+
+        .coupon-ticket-body {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 16px;
+          gap: 24px;
           width: 100%;
+          padding: 14px 22px 14px 30px;
+          background: #fff;
         }
 
-        .coupon-bottom button,
-        .skip-coupon-btn,
+        .coupon-copy {
+          display: grid;
+          gap: 6px;
+          min-width: 0;
+          flex: 1 1 auto;
+        }
+
+        .coupon-code-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .coupon-copy h3 {
+          font-family: var(--font-body);
+          font-size: 15px;
+          font-weight: 800;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+        }
+
+        .coupon-copy p {
+          font-size: 14px;
+          line-height: 1.25;
+          color: var(--color-text-primary);
+          max-width: none;
+        }
+
+        .coupon-tags {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 16px;
+        }
+
+        .coupon-tags small {
+          font-family: var(--font-body);
+          font-size: 11px;
+          color: var(--color-text-muted);
+        }
+
+        .coupon-apply-btn,
         .identity-actions button,
         .summary-header button {
-          border: none;
-          background: transparent;
+          border: 1.5px solid rgba(74,55,40,0.88);
+          background: #fff;
           color: var(--color-primary);
           font-family: var(--font-body);
           font-weight: 700;
           cursor: pointer;
+          border-radius: 9999px;
+          padding: 14px 30px;
+          transition: all 180ms ease;
+        }
+
+        .coupon-apply-btn {
+          flex: 0 0 auto;
+          min-width: 112px;
+          text-transform: uppercase;
+          letter-spacing: 0.14em;
+          padding: 9px 22px;
+          font-size: 12px;
+        }
+
+        .coupon-apply-btn:hover {
+          background: rgba(197,160,89,0.08);
+          border-color: rgba(197,160,89,0.9);
+        }
+
+        .coupon-card.selected .coupon-apply-btn {
+          background: linear-gradient(180deg, #d4ac62 0%, #bb8f43 100%);
+          border-color: var(--color-secondary);
+          color: #fff;
+        }
+
+        .coupon-card.selected {
+          border-color: rgba(197,160,89,0.9);
+          box-shadow: 0 14px 28px rgba(74,55,40,0.1);
+          background: linear-gradient(180deg, rgba(255,252,246,1) 0%, rgba(255,255,255,1) 100%);
+        }
+
+        .coupon-card.selected .coupon-ticket-value {
+          background: linear-gradient(180deg, #cda24f 0%, #b88a3d 100%);
+        }
+
+        .coupon-card.selected .coupon-ticket-value strong,
+        .coupon-card.selected .coupon-ticket-value span {
+          color: #fffdf6;
         }
 
         .manual-coupon-card {
-          margin-top: 24px;
-          padding: 24px;
+          margin-top: 18px;
+          padding: 10px 0 0;
+          border: none;
+          background: transparent;
+          box-shadow: none;
+          border-radius: 0;
         }
 
-        .first-step-card {
-          margin-top: 28px;
+        .manual-coupon-divider {
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          margin: 8px 0 18px;
+        }
+
+        .manual-coupon-divider::before,
+        .manual-coupon-divider::after {
+          content: '';
+          flex: 1 1 auto;
+          height: 1px;
+          background: rgba(223,206,184,0.92);
+        }
+
+        .manual-coupon-divider span {
+          font-family: var(--font-body);
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+          color: var(--color-secondary);
         }
 
         .first-step-note {
           display: flex;
           align-items: start;
           gap: 10px;
-          margin-top: 22px;
+          margin-top: 10px;
           padding: 16px 18px;
           border-radius: 16px;
           background: rgba(197,160,89,0.08);
@@ -2200,18 +2767,26 @@ export default function ReservaTurnoPage() {
           grid-template-columns: minmax(0, 1fr) auto;
           gap: 14px;
           align-items: end;
-          margin-top: 18px;
+          margin-top: 0;
         }
 
-        .skip-coupon-btn {
-          margin-top: 14px;
+        .manual-coupon-help {
+          margin: 12px 0 0;
+          font-family: var(--font-body);
+          font-size: 13px;
+          color: var(--color-text-muted);
         }
+
 
         .identity-card,
         .guest-form-card,
         .confirmation-card {
-          margin-top: 24px;
+          margin-top: 16px;
           padding: 28px;
+        }
+
+        .confirmation-flow {
+          margin-top: 0;
         }
 
         .identity-badge {
@@ -2231,7 +2806,6 @@ export default function ReservaTurnoPage() {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 16px;
-          margin-top: 20px;
         }
 
         .identity-grid span,
@@ -2258,7 +2832,7 @@ export default function ReservaTurnoPage() {
         }
 
         .sex-row {
-          margin-top: 18px;
+          margin-top: 8px;
         }
 
         .sex-options {
@@ -2299,14 +2873,59 @@ export default function ReservaTurnoPage() {
         }
 
         .confirmation-total {
-          margin-top: 22px;
-          padding-top: 20px;
-          border-top: 1px solid rgba(232,224,216,0.95);
+          margin-top: 4px;
+          padding-top: 18px;
+          border-top: 1px solid rgba(223,206,184,0.92);
           display: grid;
-          gap: 10px;
+          gap: 12px;
         }
 
-        .confirmation-total div,
+        .confirmation-section {
+          padding: 18px 0;
+          border-bottom: 1px solid rgba(232,224,216,0.95);
+        }
+
+        .confirmation-section:first-child {
+          padding-top: 4px;
+        }
+
+        .confirmation-section:last-of-type {
+          padding-bottom: 10px;
+          border-bottom: none;
+        }
+
+        .confirmation-detail-row {
+          display: flex;
+          align-items: start;
+          gap: 16px;
+          color: var(--color-secondary);
+        }
+
+        .confirmation-detail-row > div {
+          display: grid;
+          gap: 6px;
+        }
+
+        .confirmation-label {
+          font-family: var(--font-body);
+          font-size: 14px;
+          color: var(--color-text-secondary);
+        }
+
+        .confirmation-detail-row strong {
+          font-family: var(--font-body);
+          font-size: 16px;
+          font-weight: 500;
+          color: var(--color-text-primary);
+        }
+
+        .confirmation-secondary {
+          font-family: var(--font-body);
+          font-size: 14px;
+          color: var(--color-text-secondary);
+        }
+
+        .confirmation-total > div,
         .summary-line,
         .summary-total {
           display: flex;
@@ -2323,8 +2942,50 @@ export default function ReservaTurnoPage() {
           font-weight: 700;
         }
 
+        .discount-line,
+        .discount-line strong {
+          color: var(--color-secondary);
+        }
+
+        .discount-line {
+          align-items: flex-start !important;
+          gap: 20px;
+        }
+
+        .discount-copy {
+          display: grid !important;
+          gap: 3px;
+          justify-items: start;
+          text-align: left;
+        }
+
+        .discount-copy span {
+          font-family: var(--font-body);
+          font-size: 15px;
+          font-weight: 600;
+          color: var(--color-secondary);
+        }
+
+        .discount-copy small {
+          font-family: var(--font-body);
+          font-size: 12px;
+          line-height: 1.4;
+          color: var(--color-text-muted);
+        }
+
+        .grand-total {
+          margin-top: 4px;
+          padding-top: 10px;
+          border-top: 1px solid rgba(232,224,216,0.95);
+        }
+
+        .summary-line.discount,
+        .summary-line.discount strong {
+          color: var(--color-secondary);
+        }
+
         .policy-card {
-          margin-top: 20px;
+          margin-top: 16px;
           padding: 18px 20px;
           border-left: 4px solid var(--color-secondary);
           border-radius: 18px;
@@ -2337,20 +2998,30 @@ export default function ReservaTurnoPage() {
 
         .summary-column {
           position: sticky;
-          top: 198px;
+          top: 240px;
+          transition: top 420ms cubic-bezier(0.22, 1, 0.36, 1);
+          min-height: 0;
+          align-self: start;
+        }
+
+        .summary-column.header-hidden {
+          top: 138px;
         }
 
         .summary-card {
-          padding: 24px;
+          padding: 28px 28px 24px;
+          box-shadow: 0 18px 38px rgba(74,55,40,0.08);
+          overflow: hidden;
         }
 
         .summary-items {
-          margin-top: 22px;
+          margin-top: 18px;
+          gap: 12px;
         }
 
         .summary-item {
           display: flex;
-          align-items: center;
+          align-items: start;
           justify-content: space-between;
           gap: 14px;
           font-family: var(--font-body);
@@ -2362,32 +3033,60 @@ export default function ReservaTurnoPage() {
           font-family: var(--font-body);
         }
 
+        .summary-item span {
+          color: var(--color-text-secondary);
+          font-size: 14px;
+        }
+
+        .summary-item strong {
+          font-size: 16px;
+          color: var(--color-text-primary);
+        }
+
         .summary-divider {
           height: 1px;
-          margin: 18px 0;
+          margin: 20px 0;
           background: rgba(232,224,216,0.95);
         }
 
         .summary-meta {
           display: grid;
-          gap: 8px;
-          margin-top: 16px;
+          gap: 6px;
+          margin-top: 18px;
           font-size: 13px;
         }
 
-        .summary-note {
-          display: flex;
-          align-items: start;
-          gap: 10px;
-          margin-top: 18px;
-          padding: 14px 16px;
-          border-radius: 16px;
-          background: rgba(197,160,89,0.08);
-          color: var(--color-primary);
+        .summary-total {
+          align-items: end;
+          margin-top: 4px;
+        }
+
+        .summary-total span {
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          font-size: 13px;
+        }
+
+        .summary-total strong {
+          font-family: var(--font-heading);
+          font-size: 32px;
+          line-height: 0.95;
+          letter-spacing: -0.03em;
+        }
+
+        .summary-header button {
+          border: none;
+          background: transparent;
+          padding: 0;
+          border-radius: 0;
         }
 
         .wizard-footer {
-          margin-top: 22px;
+          border-radius: 22px;
+          background: rgba(255,255,255,0.88);
+          border: 1px solid rgba(232,224,216,0.92);
+          box-shadow: 0 14px 30px rgba(74,55,40,0.06);
+          padding: 18px 24px;
         }
 
         .footer-actions {
@@ -2395,7 +3094,6 @@ export default function ReservaTurnoPage() {
           align-items: center;
           justify-content: space-between;
           gap: 16px;
-          padding: 20px 0 0;
         }
 
         .mobile-summary-bar,
@@ -2403,16 +3101,104 @@ export default function ReservaTurnoPage() {
           display: none;
         }
 
-        .success-screen {
-          padding: 56px 38px;
-          border-radius: 32px;
-          text-align: center;
+        .reserva-page.success-mode {
+          padding: 96px 22px 72px;
           background:
-            linear-gradient(180deg, rgba(74,55,40,0.98) 0%, rgba(45,31,22,0.99) 100%);
-          color: var(--color-tertiary);
-          box-shadow: 0 24px 54px rgba(44,31,20,0.22);
+            radial-gradient(ellipse at 50% 0%, rgba(197,160,89,0.18) 0%, transparent 52%),
+            radial-gradient(ellipse at 90% 100%, rgba(197,160,89,0.08) 0%, transparent 38%),
+            linear-gradient(180deg, #2c1f14 0%, #1a1108 100%);
           position: relative;
           overflow: hidden;
+        }
+
+        .reserva-page.success-mode .reserva-shell {
+          max-width: 1060px;
+          position: relative;
+          z-index: 1;
+        }
+
+        .reserva-page.success-mode::before,
+        .reserva-page.success-mode::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          width: 280px;
+          pointer-events: none;
+          opacity: 0.95;
+          z-index: 0;
+        }
+
+        .reserva-page.success-mode::before {
+          left: 0;
+          background:
+            linear-gradient(182deg, transparent 0%, rgba(197,160,89,0.24) 18%, rgba(197,160,89,0.2) 48%, rgba(197,160,89,0.26) 100%),
+            radial-gradient(ellipse 22px 102px at 34px 74px, rgba(197,160,89,0.42) 0%, rgba(197,160,89,0.36) 52%, transparent 57%),
+            radial-gradient(ellipse 18px 86px at 108px 204px, rgba(197,160,89,0.28) 0%, rgba(197,160,89,0.22) 52%, transparent 57%),
+            radial-gradient(ellipse 24px 114px at 38px 388px, rgba(197,160,89,0.4) 0%, rgba(197,160,89,0.34) 52%, transparent 57%),
+            radial-gradient(ellipse 18px 90px at 126px 586px, rgba(197,160,89,0.26) 0%, rgba(197,160,89,0.2) 52%, transparent 57%),
+            radial-gradient(ellipse 24px 116px at 46px 804px, rgba(197,160,89,0.38) 0%, rgba(197,160,89,0.32) 52%, transparent 57%),
+            radial-gradient(ellipse 18px 88px at 116px 1022px, rgba(197,160,89,0.28) 0%, rgba(197,160,89,0.22) 52%, transparent 57%),
+            radial-gradient(ellipse 24px 114px at 34px 1238px, rgba(197,160,89,0.4) 0%, rgba(197,160,89,0.34) 52%, transparent 57%);
+          background-repeat: no-repeat;
+          background-size:
+            2px 100%,
+            150px 220px,
+            144px 194px,
+            160px 242px,
+            146px 206px,
+            164px 246px,
+            148px 202px,
+            160px 240px;
+          background-position:
+            76px 0,
+            -14px 8px,
+            10px 144px,
+            -18px 302px,
+            16px 518px,
+            -8px 720px,
+            10px 960px,
+            -20px 1164px;
+        }
+
+        .reserva-page.success-mode::after {
+          right: 0;
+          background:
+            linear-gradient(178deg, transparent 0%, rgba(197,160,89,0.12) 28%, rgba(197,160,89,0.18) 100%),
+            radial-gradient(ellipse 22px 100px at 232px 120px, rgba(197,160,89,0.24) 0%, rgba(197,160,89,0.18) 52%, transparent 57%),
+            radial-gradient(ellipse 16px 82px at 168px 318px, rgba(197,160,89,0.16) 0%, rgba(197,160,89,0.12) 52%, transparent 57%),
+            radial-gradient(ellipse 22px 104px at 226px 546px, rgba(197,160,89,0.2) 0%, rgba(197,160,89,0.15) 52%, transparent 57%),
+            radial-gradient(ellipse 16px 80px at 156px 782px, rgba(197,160,89,0.14) 0%, rgba(197,160,89,0.1) 52%, transparent 57%);
+          background-repeat: no-repeat;
+          background-size:
+            2px 100%,
+            150px 216px,
+            136px 188px,
+            150px 220px,
+            134px 186px;
+          background-position:
+            204px 0,
+            118px 48px,
+            62px 262px,
+            108px 488px,
+            54px 724px;
+        }
+
+        .success-screen {
+          padding: 0;
+          border-radius: 0;
+          background: transparent;
+          color: var(--color-tertiary);
+          box-shadow: none;
+          position: relative;
+          overflow: visible;
+          max-width: 1028px;
+          margin: 0 auto;
+          z-index: 1;
+        }
+
+        .success-screen::before {
+          content: none;
         }
 
         .success-screen h1,
@@ -2422,28 +3208,37 @@ export default function ReservaTurnoPage() {
           margin-right: auto;
         }
 
-        .success-screen p {
-          max-width: 560px;
-          color: rgba(249,245,240,0.8);
+        .success-hero {
+          text-align: center;
+          margin-bottom: 34px;
         }
 
         .success-icon-wrap {
           display: flex;
           justify-content: center;
-          margin-bottom: 26px;
+          margin-bottom: 16px;
         }
 
         .success-icon {
           position: relative;
-          width: 94px;
-          height: 94px;
+          width: 88px;
+          height: 88px;
           border-radius: 9999px;
           display: flex;
           align-items: center;
           justify-content: center;
           color: #f7e3b5;
-          background: radial-gradient(circle, rgba(197,160,89,0.22) 0%, rgba(255,255,255,0.06) 65%, transparent 100%);
-          box-shadow: 0 0 0 18px rgba(255,255,255,0.03);
+          background: radial-gradient(circle, rgba(197,160,89,0.18) 0%, rgba(255,255,255,0.05) 68%, transparent 100%);
+          border: 1.5px solid rgba(197,160,89,0.36);
+          box-shadow: 0 0 0 14px rgba(255,255,255,0.03);
+        }
+
+        .success-icon::before {
+          content: '';
+          position: absolute;
+          inset: 8px;
+          border-radius: 9999px;
+          border: 1px dashed rgba(197,160,89,0.2);
         }
 
         .success-icon svg:last-child {
@@ -2453,25 +3248,339 @@ export default function ReservaTurnoPage() {
           color: white;
         }
 
-        .success-detail-card {
-          max-width: 560px;
-          margin: 30px auto 0;
-          padding: 24px;
-          border-radius: 24px;
-          background: rgba(255,255,255,0.1);
-          border: 1px solid rgba(255,255,255,0.14);
-          backdrop-filter: blur(10px);
-        }
-
-        .success-detail-card span {
-          color: rgba(249,245,240,0.88);
-        }
-
-        .success-actions {
+        .success-eyebrow-row {
           display: flex;
+          align-items: center;
           justify-content: center;
+          gap: 18px;
+          margin-bottom: 16px;
+        }
+
+        .success-eyebrow-row .line {
+          width: 52px;
+          height: 1px;
+          background: rgba(197,160,89,0.36);
+        }
+
+        .success-eyebrow {
+          font-family: var(--font-body);
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.32em;
+          text-transform: uppercase;
+          color: var(--color-secondary);
+        }
+
+        .success-screen h1 {
+          margin: 0 0 12px;
+          font-size: clamp(3.2rem, 5.2vw, 5.4rem);
+          line-height: 0.98;
+          letter-spacing: -0.03em;
+        }
+
+        .success-screen h1 em {
+          font-style: italic;
+          color: var(--color-secondary);
+          font-weight: 500;
+        }
+
+        .success-screen p {
+          max-width: 540px;
+          font-size: 16px;
+          line-height: 1.65;
+          color: rgba(249,245,240,0.76);
+        }
+
+        .success-screen p strong {
+          color: rgba(249,245,240,0.95);
+          font-weight: 700;
+        }
+
+        .success-main-card {
+          display: grid;
+          grid-template-columns: minmax(0, 1.02fr) 1px minmax(320px, 0.9fr);
+          gap: 0;
+          margin-bottom: 20px;
+          padding: 30px 34px;
+          border-radius: 24px;
+          background: rgba(255,255,255,0.045);
+          border: 1px solid rgba(197,160,89,0.2);
+          backdrop-filter: blur(6px);
+          position: relative;
+        }
+
+        .success-main-left {
+          padding-right: 30px;
+        }
+
+        .success-main-divider {
+          background: rgba(197,160,89,0.16);
+        }
+
+        .success-main-right {
+          padding-left: 30px;
+        }
+
+        .success-date-big {
+          font-family: var(--font-heading);
+          font-size: clamp(2rem, 3vw, 3.25rem);
+          line-height: 1.02;
+          color: #fff;
+          margin-bottom: 8px;
+        }
+
+        .success-date-big em {
+          font-style: italic;
+          color: var(--color-secondary);
+          font-weight: 500;
+        }
+
+        .success-date-sub {
+          margin-bottom: 20px;
+          font-family: var(--font-body);
+          font-size: 14px;
+          color: rgba(249,245,240,0.54);
+          letter-spacing: 0.04em;
+        }
+
+        .success-detail-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px 0;
+          border-top: 1px solid rgba(255,255,255,0.06);
+          font-family: var(--font-body);
+        }
+
+        .success-detail-row .ic {
+          color: var(--color-secondary);
+          display: inline-flex;
+          flex-shrink: 0;
+        }
+
+        .success-detail-row .lab {
+          width: 72px;
+          flex-shrink: 0;
+          color: rgba(249,245,240,0.42);
+          font-size: 11px;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          font-weight: 700;
+        }
+
+        .success-detail-row .v {
+          color: #fff;
+          font-size: 14px;
+          font-weight: 600;
+        }
+
+        .success-timeline-title {
+          margin-bottom: 22px;
+          font-family: var(--font-heading);
+          font-style: italic;
+          font-size: 19px;
+          color: var(--color-secondary);
+        }
+
+        .success-timeline {
+          position: relative;
+          padding-left: 52px;
+        }
+
+        .success-timeline::before {
+          content: '';
+          position: absolute;
+          left: 15px;
+          top: 24px;
+          bottom: 24px;
+          width: 2px;
+          background: linear-gradient(180deg, var(--color-secondary) 0%, var(--color-secondary) 32%, rgba(197,160,89,0.24) 32%, rgba(197,160,89,0.24) 100%);
+          border-radius: 999px;
+        }
+
+        .success-timeline-step {
+          position: relative;
+          padding-bottom: 30px;
+        }
+
+        .success-timeline-step:last-child {
+          padding-bottom: 0;
+        }
+
+        .success-timeline-step::before {
+          content: '';
+          position: absolute;
+          left: -37px;
+          top: 2px;
+          width: 24px;
+          height: 24px;
+          border-radius: 999px;
+          background: var(--color-secondary);
+          box-shadow: 0 0 0 5px rgba(197,160,89,0.16);
+        }
+
+        .success-timeline-step:first-child::after {
+          content: '1';
+          position: absolute;
+          left: -37px;
+          top: 2px;
+          width: 24px;
+          height: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: var(--color-primary);
+          font-family: var(--font-body);
+          font-size: 11px;
+          font-weight: 800;
+        }
+
+        .success-timeline-step:nth-child(2)::after,
+        .success-timeline-step:nth-child(3)::after {
+          position: absolute;
+          left: -37px;
+          top: 2px;
+          width: 24px;
+          height: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: var(--font-body);
+          font-size: 11px;
+          font-weight: 800;
+          color: rgba(197,160,89,0.55);
+        }
+
+        .success-timeline-step:nth-child(2)::after {
+          content: '2';
+        }
+
+        .success-timeline-step:nth-child(3)::after {
+          content: '3';
+        }
+
+        .success-timeline-step.pending::before {
+          background: rgba(197,160,89,0.06);
+          border: 2px solid rgba(197,160,89,0.4);
+          box-shadow: none;
+        }
+
+        .success-step-title {
+          margin-bottom: 4px;
+          font-family: var(--font-body);
+          font-size: 15px;
+          font-weight: 700;
+          color: #fff;
+        }
+
+        .success-timeline-step.pending .success-step-title {
+          color: rgba(249,245,240,0.74);
+          font-weight: 600;
+        }
+
+        .success-step-copy {
+          font-family: var(--font-body);
+          font-size: 12.5px;
+          line-height: 1.6;
+          color: rgba(249,245,240,0.52);
+        }
+
+        .success-step-pill {
+          display: inline-flex;
+          align-items: center;
+          margin-top: 9px;
+          padding: 4px 12px;
+          border-radius: 999px;
+          background: rgba(197,160,89,0.12);
+          border: 1px solid rgba(197,160,89,0.28);
+          color: var(--color-secondary);
+          font-family: var(--font-body);
+          font-size: 10.5px;
+          font-weight: 700;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+        }
+
+        .success-timeline-step.pending .success-step-pill {
+          background: rgba(197,160,89,0.06);
+          border-color: rgba(197,160,89,0.16);
+          color: rgba(197,160,89,0.66);
+        }
+
+        .success-quick-actions {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 14px;
-          margin-top: 30px;
+          margin-bottom: 38px;
+        }
+
+        .success-quick-card {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+          padding: 18px 14px;
+          border-radius: 18px;
+          text-align: center;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(197,160,89,0.16);
+          color: var(--color-tertiary);
+        }
+
+        .success-quick-card svg {
+          color: var(--color-secondary);
+        }
+
+        .success-quick-card strong {
+          font-family: var(--font-body);
+          font-size: 14px;
+          font-weight: 700;
+          color: #fff;
+        }
+
+        .success-quick-card span {
+          font-family: var(--font-body);
+          font-size: 12px;
+          color: rgba(249,245,240,0.5);
+        }
+
+        .success-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 18px;
+          padding-top: 22px;
+          border-top: 1px solid rgba(197,160,89,0.16);
+        }
+
+        .success-link-btn {
+          border: none;
+          background: none;
+          padding: 0;
+          color: rgba(249,245,240,0.62);
+          font-family: var(--font-body);
+          font-size: 13px;
+          text-decoration: underline;
+          text-underline-offset: 4px;
+          cursor: pointer;
+        }
+
+        .success-primary-btn {
+          border: none;
+          border-radius: 999px;
+          padding: 16px 30px;
+          background: linear-gradient(180deg, #d4ac62 0%, #c69b4f 100%);
+          color: var(--color-primary);
+          font-family: var(--font-body);
+          font-size: 13px;
+          font-weight: 800;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          box-shadow: 0 10px 32px -8px rgba(197,160,89,0.5);
+          cursor: pointer;
         }
 
         @keyframes wizardPulse {
@@ -2490,7 +3599,12 @@ export default function ReservaTurnoPage() {
           }
         }
 
-        @media (max-width: 1100px) {
+        @keyframes wizardHintFloat {
+          0%, 100% { transform: translateX(-50%) translateY(0); }
+          50% { transform: translateX(-50%) translateY(4px); }
+        }
+
+        @media (max-width: 1280px) {
           .content-shell {
             grid-template-columns: minmax(0, 1fr);
           }
@@ -2502,6 +3616,12 @@ export default function ReservaTurnoPage() {
           .mobile-summary-bar,
           .mobile-summary-drawer {
             display: block;
+          }
+
+          .summary-card {
+            height: auto;
+            max-height: none;
+            overflow: visible;
           }
 
           .mobile-summary-bar {
@@ -2576,12 +3696,24 @@ export default function ReservaTurnoPage() {
             padding-top: 140px;
           }
 
+          .reserva-page.success-mode {
+            padding: 108px 18px 56px;
+          }
+
           .progress-shell {
             top: 110px;
           }
 
           .progress-card {
             padding: 18px 16px 14px;
+          }
+
+          .wizard-panel-header {
+            padding: 28px 24px 10px;
+          }
+
+          .wizard-panel-body {
+            padding: 10px 24px 28px;
           }
 
           .progress-line {
@@ -2600,10 +3732,17 @@ export default function ReservaTurnoPage() {
 
           .salon-grid,
           .selection-layout,
-          .coupon-grid,
           .guest-form-grid,
           .identity-grid {
             grid-template-columns: 1fr;
+          }
+
+          .content-column {
+            gap: 16px;
+          }
+
+          .coupon-grid {
+            grid-template-columns: minmax(0, 1fr);
           }
 
           .salon-card {
@@ -2625,6 +3764,34 @@ export default function ReservaTurnoPage() {
 
           .service-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .success-screen {
+            padding: 0;
+          }
+
+          .success-main-card {
+            grid-template-columns: 1fr;
+            padding: 24px 20px;
+          }
+
+          .success-main-left {
+            padding-right: 0;
+            padding-bottom: 24px;
+          }
+
+          .success-main-divider {
+            width: 100%;
+            height: 1px;
+          }
+
+          .success-main-right {
+            padding-left: 0;
+            padding-top: 24px;
+          }
+
+          .success-quick-actions {
+            grid-template-columns: 1fr;
           }
 
           .desktop-schedule {
@@ -2684,12 +3851,11 @@ export default function ReservaTurnoPage() {
 
           .footer-actions,
           .guest-login-invite,
-          .success-actions {
+          .success-footer {
             flex-direction: column;
           }
 
           .footer-actions > button,
-          .success-actions > button,
           .guest-login-invite > button {
             width: 100%;
           }
@@ -2698,6 +3864,10 @@ export default function ReservaTurnoPage() {
         @media (max-width: 767px) {
           .reserva-page {
             padding-top: 128px;
+          }
+
+          .reserva-page.success-mode {
+            padding: 96px 14px 44px;
           }
 
           .progress-shell {
@@ -2725,12 +3895,58 @@ export default function ReservaTurnoPage() {
 
           .wizard-panel,
           .success-screen {
-            padding: 26px 20px;
             border-radius: 24px;
+          }
+
+          .success-screen h1 {
+            font-size: clamp(2.6rem, 12vw, 4rem);
+          }
+
+          .success-eyebrow-row .line {
+            width: 36px;
+          }
+
+          .success-date-big {
+            font-size: 2rem;
+          }
+
+          .success-footer {
+            align-items: stretch;
+          }
+
+          .success-primary-btn {
+            width: 100%;
+            justify-content: center;
+          }
+
+          .success-link-btn {
+            text-align: center;
+          }
+
+          .wizard-panel-header {
+            padding: 24px 20px 10px;
+          }
+
+          .wizard-panel-body {
+            padding: 8px 20px 24px;
           }
 
           .service-grid {
             grid-template-columns: 1fr 1fr;
+          }
+
+          .coupon-card {
+            min-height: 0;
+          }
+
+          .coupon-ticket-body {
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 14px 18px 14px 22px;
+          }
+
+          .coupon-apply-btn {
+            width: 100%;
           }
 
           .week-nav {
@@ -2744,6 +3960,771 @@ export default function ReservaTurnoPage() {
 
           .manual-coupon-row {
             grid-template-columns: 1fr;
+          }
+        }
+
+        @media (min-width: 901px) {
+          .wizard-panel-body {
+            overflow: visible;
+          }
+
+          .summary-card {
+            height: auto;
+            max-height: none;
+            overflow: visible;
+          }
+        }
+
+        /* Success screen — direct replica baseline from HTML reference */
+        .reserva-page.success-mode {
+          padding: 64px 0 80px;
+          background:
+            radial-gradient(ellipse at 50% 0%, rgba(197,160,89,0.18) 0%, transparent 55%),
+            radial-gradient(ellipse at 90% 100%, rgba(197,160,89,0.08) 0%, transparent 40%),
+            linear-gradient(180deg, #2c1f14 0%, #1a1108 100%);
+          position: relative;
+          overflow-x: hidden;
+        }
+
+        .reserva-page.success-mode .reserva-shell {
+          max-width: none;
+          width: 100%;
+        }
+
+        .reserva-page.success-mode::before,
+        .reserva-page.success-mode::after {
+          content: none;
+        }
+
+        .success-screen {
+          position: relative;
+          z-index: 1;
+          max-width: 1060px;
+          margin: 0 auto;
+          padding: 64px 48px 80px;
+          border: none;
+          border-radius: 0;
+          background: transparent;
+          color: var(--color-tertiary);
+          box-shadow: none;
+          overflow: visible;
+        }
+
+        .success-screen::before {
+          content: none;
+        }
+
+        .success-stars {
+          position: fixed;
+          inset: 0;
+          pointer-events: none;
+          z-index: 0;
+        }
+
+        .success-stars i {
+          position: absolute;
+          width: 2px;
+          height: 2px;
+          border-radius: 50%;
+          background: var(--color-secondary);
+          box-shadow: 0 0 6px var(--color-secondary);
+          opacity: 0.22;
+        }
+
+        .success-hero {
+          position: relative;
+          z-index: 1;
+          text-align: center;
+          margin-bottom: 44px;
+        }
+
+        .success-mark {
+          width: 88px;
+          height: 88px;
+          margin: 0 auto 22px;
+          border-radius: 50%;
+          background: radial-gradient(circle at center, rgba(197,160,89,0.22) 0%, rgba(197,160,89,0.04) 65%, transparent 100%);
+          border: 1.5px solid rgba(197,160,89,0.38);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          color: var(--color-secondary);
+        }
+
+        .success-mark::before {
+          content: '';
+          position: absolute;
+          inset: 7px;
+          border-radius: 50%;
+          border: 1px dashed rgba(197,160,89,0.26);
+        }
+
+        .success-eyebrow-row {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 14px;
+          margin-bottom: 14px;
+        }
+
+        .success-eyebrow-row .ln {
+          width: 52px;
+          height: 1px;
+          background: rgba(197,160,89,0.38);
+        }
+
+        .success-eyebrow {
+          font-size: 11px;
+          letter-spacing: 0.34em;
+          text-transform: uppercase;
+          color: var(--color-secondary);
+          font-weight: 700;
+        }
+
+        .success-screen .success-title {
+          margin: 0 0 14px;
+          font-family: var(--font-heading);
+          font-size: 62px;
+          font-weight: 500;
+          line-height: 1.02;
+          letter-spacing: -0.02em;
+          color: var(--color-tertiary);
+        }
+
+        .success-screen .success-title em {
+          font-style: italic;
+          color: var(--color-secondary);
+        }
+
+        .success-screen .success-subtitle {
+          max-width: 460px;
+          margin: 0 auto;
+          color: rgba(249,245,240,0.68);
+          font-size: 16px;
+          line-height: 1.6;
+        }
+
+        .success-screen .success-subtitle strong {
+          color: rgba(249,245,240,0.9);
+          font-weight: 600;
+        }
+
+        .success-card {
+          position: relative;
+          z-index: 1;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(197,160,89,0.2);
+          border-radius: 22px;
+          padding: 36px 40px;
+          backdrop-filter: blur(6px);
+          display: grid;
+          grid-template-columns: 1.05fr 1px 1fr;
+          gap: 0;
+          margin-bottom: 22px;
+        }
+
+        .success-card-left {
+          padding-right: 36px;
+        }
+
+        .success-card-divider {
+          background: rgba(197,160,89,0.16);
+        }
+
+        .success-card-right {
+          padding-left: 36px;
+        }
+
+        .success-date-big {
+          font-family: var(--font-heading);
+          font-size: 30px;
+          font-weight: 500;
+          line-height: 1.1;
+          color: #fff;
+          margin-bottom: 4px;
+        }
+
+        .success-date-big em {
+          font-style: italic;
+          color: var(--color-secondary);
+        }
+
+        .success-date-sub {
+          font-size: 13px;
+          color: rgba(249,245,240,0.55);
+          letter-spacing: 0.04em;
+          margin-bottom: 24px;
+        }
+
+        .success-detail-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 11px 0;
+          font-size: 13.5px;
+          color: rgba(249,245,240,0.85);
+          border-top: 1px solid rgba(255,255,255,0.055);
+        }
+
+        .success-detail-ic {
+          color: var(--color-secondary);
+          display: inline-flex;
+          flex-shrink: 0;
+        }
+
+        .success-detail-lab {
+          color: rgba(249,245,240,0.42);
+          font-size: 11px;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          font-weight: 700;
+          width: 72px;
+          flex-shrink: 0;
+        }
+
+        .success-detail-v {
+          color: #fff;
+          font-weight: 500;
+        }
+
+        .success-tl-title {
+          font-family: var(--font-heading);
+          font-style: italic;
+          font-size: 17px;
+          color: var(--color-secondary);
+          margin-bottom: 26px;
+        }
+
+        .success-tl {
+          position: relative;
+          padding-left: 50px;
+          counter-reset: success-step;
+        }
+
+        .success-tl::before {
+          content: '';
+          position: absolute;
+          left: 14px;
+          top: 26px;
+          bottom: 32px;
+          width: 2px;
+          background: linear-gradient(180deg, var(--color-secondary) 0%, var(--color-secondary) 30%, rgba(197,160,89,0.28) 30%, rgba(197,160,89,0.28) 100%);
+          border-radius: 2px;
+        }
+
+        .success-ts {
+          position: relative;
+          padding-bottom: 34px;
+          counter-increment: success-step;
+        }
+
+        .success-ts:last-child {
+          padding-bottom: 0;
+        }
+
+        .success-ts::before {
+          content: counter(success-step);
+          position: absolute;
+          left: -44px;
+          top: 2px;
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          background: var(--color-secondary);
+          color: var(--color-primary);
+          font-family: var(--font-body);
+          font-size: 11px;
+          font-weight: 800;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 0 0 5px rgba(197,160,89,0.18), 0 0 18px rgba(197,160,89,0.38);
+        }
+
+        .success-ts:first-child::after {
+          content: '';
+          position: absolute;
+          left: -49px;
+          top: -3px;
+          width: 34px;
+          height: 34px;
+          border-radius: 50%;
+          border: 1.5px solid rgba(197,160,89,0.55);
+          animation: ring-pulse 2.2s ease-out infinite;
+          pointer-events: none;
+        }
+
+        .success-ts.pending::before {
+          background: rgba(197,160,89,0.06);
+          border: 2px solid rgba(197,160,89,0.42);
+          color: rgba(197,160,89,0.55);
+          box-shadow: none;
+        }
+
+        .success-ts-t {
+          font-size: 14.5px;
+          color: #fff;
+          font-weight: 700;
+          margin-bottom: 4px;
+        }
+
+        .success-ts.pending .success-ts-t {
+          color: rgba(249,245,240,0.7);
+          font-weight: 600;
+        }
+
+        .success-ts-d {
+          font-size: 13px;
+          color: rgba(249,245,240,0.52);
+          line-height: 1.55;
+        }
+
+        .success-when {
+          display: inline-flex;
+          align-items: center;
+          background: rgba(197,160,89,0.12);
+          border: 1px solid rgba(197,160,89,0.28);
+          border-radius: 999px;
+          padding: 3px 11px;
+          font-size: 10.5px;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          color: var(--color-secondary);
+          font-weight: 700;
+          margin-top: 8px;
+        }
+
+        .success-ts.pending .success-when {
+          background: rgba(197,160,89,0.06);
+          border-color: rgba(197,160,89,0.18);
+          color: rgba(197,160,89,0.65);
+        }
+
+        .success-actions {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 12px;
+          margin-bottom: 40px;
+          position: relative;
+          z-index: 1;
+        }
+
+        .success-action {
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(197,160,89,0.16);
+          border-radius: 16px;
+          padding: 20px 14px;
+          text-align: center;
+          cursor: pointer;
+          transition: all 0.22s;
+          color: var(--color-tertiary);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .success-action:hover {
+          background: rgba(197,160,89,0.09);
+          border-color: var(--color-secondary);
+          transform: translateY(-2px);
+        }
+
+        .success-action .ic {
+          color: var(--color-secondary);
+        }
+
+        .success-action .t {
+          font-size: 13px;
+          font-weight: 700;
+          letter-spacing: 0.03em;
+          color: #fff;
+        }
+
+        .success-action .d {
+          font-size: 11px;
+          color: rgba(249,245,240,0.5);
+        }
+
+        .success-foot {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding-top: 28px;
+          border-top: 1px solid rgba(197,160,89,0.15);
+          position: relative;
+          z-index: 1;
+        }
+
+        .success-btn-ghost {
+          background: none;
+          border: none;
+          color: rgba(249,245,240,0.55);
+          font-size: 13px;
+          font-family: var(--font-body);
+          cursor: pointer;
+          text-decoration: underline;
+          text-underline-offset: 4px;
+          padding: 0;
+        }
+
+        .success-btn-ghost:hover {
+          color: var(--color-secondary);
+        }
+
+        .success-btn-primary {
+          background: var(--color-secondary);
+          color: var(--color-primary);
+          padding: 16px 34px;
+          border-radius: 999px;
+          border: none;
+          cursor: pointer;
+          font-family: var(--font-body);
+          font-size: 13px;
+          font-weight: 700;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          box-shadow: 0 10px 32px -8px rgba(197,160,89,0.5);
+          transition: background 0.2s, transform 0.2s;
+        }
+
+        .success-btn-primary:hover {
+          background: #d4b06b;
+          transform: translateY(-1px);
+        }
+
+        .success-btn-primary .ar {
+          font-family: var(--font-heading);
+          font-size: 18px;
+        }
+
+        @keyframes ring-pulse {
+          0%   { transform: scale(0.78); opacity: 0.9; }
+          100% { transform: scale(1.48); opacity: 0; }
+        }
+
+        @media (max-width: 860px) {
+          .success-screen {
+            padding: 40px 22px 60px;
+          }
+
+          .success-screen .success-title {
+            font-size: 42px;
+          }
+
+          .success-card {
+            grid-template-columns: 1fr;
+            padding: 28px 24px;
+          }
+
+          .success-card-left {
+            padding-right: 0;
+            padding-bottom: 28px;
+          }
+
+          .success-card-divider {
+            width: 100%;
+            height: 1px;
+            margin: 0;
+          }
+
+          .success-card-right {
+            padding-left: 0;
+            padding-top: 28px;
+          }
+
+          .success-actions {
+            grid-template-columns: repeat(3, 1fr);
+          }
+
+          .success-foot {
+            flex-direction: column-reverse;
+            gap: 16px;
+            align-items: stretch;
+          }
+
+          .success-btn-primary {
+            width: 100%;
+            justify-content: center;
+          }
+
+          .success-btn-ghost {
+            text-align: center;
+          }
+        }
+
+        /* Success screen final polish */
+        .success-screen::before,
+        .success-screen::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          width: 118px;
+          pointer-events: none;
+          opacity: 0.72;
+          z-index: 0;
+          background-repeat: no-repeat;
+          background-size: 100% 100%;
+        }
+
+        .success-screen::before {
+          left: -132px;
+          background-image:
+            linear-gradient(180deg, transparent 0%, rgba(197,160,89,0.18) 12%, rgba(197,160,89,0.22) 50%, rgba(197,160,89,0.18) 88%, transparent 100%),
+            linear-gradient(182deg, transparent 0%, transparent 2%, rgba(197,160,89,0.24) 3%, rgba(197,160,89,0.24) 97%, transparent 98%),
+            radial-gradient(ellipse 14px 56px at 28px 24px, rgba(233,205,140,0.38) 0%, rgba(233,205,140,0.18) 58%, transparent 62%),
+            radial-gradient(ellipse 9px 38px at 72px 72px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
+            radial-gradient(ellipse 12px 50px at 48px 128px, rgba(233,205,140,0.36) 0%, rgba(233,205,140,0.15) 58%, transparent 62%),
+            radial-gradient(ellipse 8px 32px at 18px 188px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
+            radial-gradient(ellipse 14px 60px at 80px 248px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
+            radial-gradient(ellipse 10px 40px at 42px 318px, rgba(233,205,140,0.36) 0%, rgba(233,205,140,0.15) 58%, transparent 62%),
+            radial-gradient(ellipse 15px 62px at 24px 404px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
+            radial-gradient(ellipse 9px 36px at 72px 470px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
+            radial-gradient(ellipse 16px 68px at 52px 560px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
+            radial-gradient(ellipse 11px 44px at 20px 656px, rgba(233,205,140,0.32) 0%, rgba(233,205,140,0.13) 58%, transparent 62%),
+            radial-gradient(ellipse 14px 54px at 78px 732px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.13) 58%, transparent 62%);
+          background-position:
+            0 0,
+            56px 0,
+            0 0,
+            0 0,
+            0 0,
+            0 0,
+            0 0,
+            0 0,
+            0 0,
+            0 0,
+            0 0;
+          background-size:
+            1px 100%,
+            1px 100%,
+            100% 100%,
+            100% 100%,
+            100% 100%,
+            100% 100%,
+            100% 100%,
+            100% 100%,
+            100% 100%,
+            100% 100%,
+            100% 100%;
+        }
+
+        .success-screen::after {
+          right: -132px;
+          transform: scaleX(-1);
+          background-image:
+            linear-gradient(180deg, transparent 0%, rgba(197,160,89,0.18) 12%, rgba(197,160,89,0.22) 50%, rgba(197,160,89,0.18) 88%, transparent 100%),
+            linear-gradient(182deg, transparent 0%, transparent 2%, rgba(197,160,89,0.24) 3%, rgba(197,160,89,0.24) 97%, transparent 98%),
+            radial-gradient(ellipse 14px 56px at 28px 24px, rgba(233,205,140,0.38) 0%, rgba(233,205,140,0.18) 58%, transparent 62%),
+            radial-gradient(ellipse 9px 38px at 72px 72px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
+            radial-gradient(ellipse 12px 50px at 48px 128px, rgba(233,205,140,0.36) 0%, rgba(233,205,140,0.15) 58%, transparent 62%),
+            radial-gradient(ellipse 8px 32px at 18px 188px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
+            radial-gradient(ellipse 14px 60px at 80px 248px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
+            radial-gradient(ellipse 10px 40px at 42px 318px, rgba(233,205,140,0.36) 0%, rgba(233,205,140,0.15) 58%, transparent 62%),
+            radial-gradient(ellipse 15px 62px at 24px 404px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
+            radial-gradient(ellipse 9px 36px at 72px 470px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
+            radial-gradient(ellipse 16px 68px at 52px 560px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
+            radial-gradient(ellipse 11px 44px at 20px 656px, rgba(233,205,140,0.32) 0%, rgba(233,205,140,0.13) 58%, transparent 62%),
+            radial-gradient(ellipse 14px 54px at 78px 732px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.13) 58%, transparent 62%);
+          background-position:
+            0 0,
+            56px 0,
+            0 0,
+            0 0,
+            0 0,
+            0 0,
+            0 0,
+            0 0,
+            0 0,
+            0 0,
+            0 0,
+            0 0,
+            0 0;
+          background-size:
+            1px 100%,
+            1px 100%,
+            100% 100%,
+            100% 100%,
+            100% 100%,
+            100% 100%,
+            100% 100%,
+            100% 100%,
+            100% 100%,
+            100% 100%,
+            100% 100%,
+            100% 100%,
+            100% 100%;
+        }
+
+        .success-tl::before {
+          left: 18px;
+          top: 18px;
+          bottom: 18px;
+        }
+
+        .success-ts::before {
+          left: -40px;
+          top: 0;
+        }
+
+        .success-ts:first-child::after {
+          left: -45px;
+          top: -5px;
+        }
+
+        @media (max-width: 1200px) {
+          .success-screen::before,
+          .success-screen::after {
+            width: 88px;
+          }
+
+          .success-screen::before {
+            left: -94px;
+          }
+
+          .success-screen::after {
+            right: -94px;
+          }
+        }
+
+        @media (max-width: 860px) {
+          .success-screen::before,
+          .success-screen::after {
+            display: none;
+          }
+        }
+
+        .success-screen::before,
+        .success-screen::after {
+          content: none;
+        }
+
+        .success-botanical-sides {
+          position: absolute;
+          inset: 0;
+          left: 50%;
+          transform: translateX(-50%);
+          width: min(100vw, 1600px);
+          height: 100%;
+          pointer-events: none;
+          opacity: 0.9;
+          z-index: 0;
+          overflow: visible;
+        }
+
+        .success-hero,
+        .success-card,
+        .success-actions,
+        .success-foot {
+          position: relative;
+          z-index: 1;
+        }
+
+        .success-tl {
+          padding-left: 54px;
+        }
+
+        .success-tl::before {
+          left: 22px;
+          top: 12px;
+          bottom: 12px;
+        }
+
+        .success-ts::before {
+          left: -42px;
+          top: 0;
+        }
+
+        .success-ts:first-child::after {
+          left: -47px;
+          top: -5px;
+        }
+
+        @media (max-width: 860px) {
+          .success-botanical-sides {
+            display: none;
+          }
+        }
+        
+        /* Success screen final edge ornaments + centered segmented timeline */
+        .success-botanical-side {
+          position: fixed !important;
+          top: 0 !important;
+          width: 214px !important;
+          height: 100vh !important;
+          opacity: 0.94 !important;
+          z-index: 0 !important;
+          pointer-events: none !important;
+        }
+
+        .success-botanical-side-left {
+          left: 14px !important;
+        }
+
+        .success-botanical-side-right {
+          right: 14px !important;
+        }
+
+        .success-tl {
+          padding-left: 60px !important;
+        }
+
+        .success-tl::before {
+          content: none !important;
+        }
+
+        .success-tl::after {
+          content: none !important;
+        }
+
+        .success-ts {
+          position: relative !important;
+          padding-bottom: 34px !important;
+        }
+
+        .success-ts:last-child {
+          padding-bottom: 0 !important;
+        }
+
+        .success-ts::before {
+          left: -47px !important;
+          top: 2px !important;
+          width: 24px !important;
+          height: 24px !important;
+        }
+
+        .success-ts::after {
+          content: '' !important;
+          position: absolute !important;
+          left: -35px !important;
+          top: 14px !important;
+          width: 2px !important;
+          height: calc(100% + 22px) !important;
+          background: rgba(197,160,89,0.3) !important;
+          border-radius: 999px !important;
+        }
+
+        .success-ts:first-child::after {
+          background: linear-gradient(180deg, #d8b15f 0%, #cfa34b 100%) !important;
+          box-shadow: 0 0 14px rgba(197,160,89,0.28) !important;
+        }
+
+        .success-ts:last-child::after {
+          content: none !important;
+        }
+
+        .success-ts:first-child::before {
+          box-shadow: 0 0 0 5px rgba(197,160,89,0.22), 0 0 18px rgba(197,160,89,0.34) !important;
+        }
+
+        @media (max-width: 860px) {
+          .success-botanical-side {
+            display: none !important;
           }
         }
       `}</style>
