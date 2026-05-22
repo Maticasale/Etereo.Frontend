@@ -208,33 +208,6 @@ const COUPONS_AUTH: CouponOption[] = [
   },
 ]
 
-const SUCCESS_STAR_POSITIONS = [
-  [8, 12],
-  [15, 68],
-  [22, 34],
-  [31, 88],
-  [42, 5],
-  [52, 47],
-  [61, 79],
-  [70, 23],
-  [79, 55],
-  [88, 91],
-  [5, 45],
-  [18, 92],
-  [28, 17],
-  [37, 62],
-  [47, 30],
-  [57, 85],
-  [66, 10],
-  [75, 50],
-  [84, 73],
-  [93, 38],
-  [11, 77],
-  [24, 3],
-  [44, 60],
-  [82, 25],
-] as const
-
 const AVAILABILITY: DayAvailability[] = [
   {
     id: 'lun19',
@@ -356,43 +329,71 @@ function botanicalPattern(opacity: number) {
   }
 }
 
-function SuccessBotanicalSide({ side }: { side: 'left' | 'right' }) {
-  const isRight = side === 'right'
+function SuccessBotanicalBackground() {
   return (
-    <svg
-      viewBox="0 0 180 1400"
-      preserveAspectRatio="xMidYMid slice"
-      className={`success-botanical-side success-botanical-side-${side}`}
-      aria-hidden="true"
-    >
+    <svg className="success-botanical-bg" viewBox="0 0 1600 960" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <defs>
-        <linearGradient id="successLeafPremium" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="rgba(233,205,140,0.42)" />
-          <stop offset="100%" stopColor="rgba(233,205,140,0.08)" />
+        <linearGradient id="successLeafBackdrop" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="rgba(233,205,140,0.55)" />
+          <stop offset="100%" stopColor="rgba(233,205,140,0.03)" />
         </linearGradient>
       </defs>
 
-      <g fill="url(#successLeafPremium)" stroke="rgba(223,195,134,0.18)" strokeWidth="0.85">
-        {Array.from({ length: 28 }).map((_, index) => {
-          const y = 18 + index * 50
-          const x = isRight ? 150 + Math.cos(index * 0.62) * 18 : 30 + Math.sin(index * 0.55) * 18
-          const rot = isRight ? 38 + (index % 2 ? -64 : 44) : -42 + (index % 2 ? 70 : -14)
-          return (
-            <ellipse
-              key={`success-${side}-${index}`}
-              cx={x}
-              cy={y}
-              rx="6"
-              ry={30 + (index % 3) * 10}
-              transform={`rotate(${rot} ${x} ${y})`}
-            />
-          )
-        })}
-        <path
-          d={isRight ? 'M 154 -20 Q 184 320 160 760 T 172 1520' : 'M 26 -20 Q 4 360 20 760 T 10 1520'}
-          fill="none"
-          stroke="rgba(223,195,134,0.18)"
-        />
+      <g stroke="rgba(223,195,134,0.24)" strokeWidth="0.85" fill="none">
+        <path d="M 100 -20 Q 65 260 85 520 T 65 1040" />
+        <path d="M 1465 -20 Q 1500 220 1480 530 T 1535 1040" />
+      </g>
+
+      <g fill="url(#successLeafBackdrop)" stroke="rgba(223,195,134,0.22)" strokeWidth="0.85">
+        <ellipse cx="100.0" cy="28" rx="5" ry="24" transform="rotate(-56 100.0 28)" />
+        <ellipse cx="127.1" cy="65" rx="5" ry="32" transform="rotate(28 127.1 65)" />
+        <ellipse cx="146.3" cy="102" rx="5" ry="40" transform="rotate(-56 146.3 102)" />
+        <ellipse cx="151.8" cy="139" rx="5" ry="24" transform="rotate(28 151.8 139)" />
+        <ellipse cx="142.0" cy="176" rx="5" ry="32" transform="rotate(-56 142.0 176)" />
+        <ellipse cx="119.8" cy="213" rx="5" ry="40" transform="rotate(28 119.8 213)" />
+        <ellipse cx="91.8" cy="250" rx="5" ry="24" transform="rotate(-56 91.8 250)" />
+        <ellipse cx="66.2" cy="287" rx="5" ry="32" transform="rotate(28 66.2 287)" />
+        <ellipse cx="50.5" cy="324" rx="5" ry="40" transform="rotate(-56 50.5 324)" />
+        <ellipse cx="48.9" cy="361" rx="5" ry="24" transform="rotate(28 48.9 361)" />
+        <ellipse cx="63.3" cy="398" rx="5" ry="32" transform="rotate(-56 63.3 398)" />
+        <ellipse cx="90.5" cy="435" rx="5" ry="40" transform="rotate(28 90.5 435)" />
+        <ellipse cx="119.7" cy="472" rx="5" ry="24" transform="rotate(-56 119.7 472)" />
+        <ellipse cx="141.7" cy="509" rx="5" ry="32" transform="rotate(28 141.7 509)" />
+        <ellipse cx="151.7" cy="546" rx="5" ry="40" transform="rotate(-56 151.7 546)" />
+        <ellipse cx="142.6" cy="583" rx="5" ry="24" transform="rotate(28 142.6 583)" />
+        <ellipse cx="120.7" cy="620" rx="5" ry="32" transform="rotate(-56 120.7 620)" />
+        <ellipse cx="92.6" cy="657" rx="5" ry="40" transform="rotate(28 92.6 657)" />
+        <ellipse cx="66.9" cy="694" rx="5" ry="24" transform="rotate(-56 66.9 694)" />
+        <ellipse cx="50.8" cy="731" rx="5" ry="32" transform="rotate(28 50.8 731)" />
+        <ellipse cx="48.0" cy="768" rx="5" ry="40" transform="rotate(-56 48.0 768)" />
+        <ellipse cx="62.6" cy="805" rx="5" ry="24" transform="rotate(28 62.6 805)" />
+        <ellipse cx="89.7" cy="842" rx="5" ry="32" transform="rotate(-56 89.7 842)" />
+        <ellipse cx="118.8" cy="879" rx="5" ry="40" transform="rotate(28 118.8 879)" />
+      </g>
+
+      <g fill="url(#successLeafBackdrop)" stroke="rgba(223,195,134,0.22)" strokeWidth="0.85">
+        <ellipse cx="1536.0" cy="22" rx="5" ry="24" transform="rotate(82 1536.0 22)" />
+        <ellipse cx="1527.4" cy="61" rx="5" ry="32" transform="rotate(-26 1527.4 61)" />
+        <ellipse cx="1505.0" cy="100" rx="5" ry="40" transform="rotate(82 1505.0 100)" />
+        <ellipse cx="1477.2" cy="139" rx="5" ry="24" transform="rotate(-26 1477.2 139)" />
+        <ellipse cx="1454.1" cy="178" rx="5" ry="32" transform="rotate(82 1454.1 178)" />
+        <ellipse cx="1444.0" cy="217" rx="5" ry="40" transform="rotate(-26 1444.0 217)" />
+        <ellipse cx="1451.2" cy="256" rx="5" ry="24" transform="rotate(82 1451.2 256)" />
+        <ellipse cx="1473.2" cy="295" rx="5" ry="32" transform="rotate(-26 1473.2 295)" />
+        <ellipse cx="1501.0" cy="334" rx="5" ry="40" transform="rotate(82 1501.0 334)" />
+        <ellipse cx="1524.7" cy="373" rx="5" ry="24" transform="rotate(-26 1524.7 373)" />
+        <ellipse cx="1535.8" cy="412" rx="5" ry="32" transform="rotate(82 1535.8 412)" />
+        <ellipse cx="1530.0" cy="451" rx="5" ry="40" transform="rotate(-26 1530.0 451)" />
+        <ellipse cx="1508.6" cy="490" rx="5" ry="24" transform="rotate(82 1508.6 490)" />
+        <ellipse cx="1480.8" cy="529" rx="5" ry="32" transform="rotate(-26 1480.8 529)" />
+        <ellipse cx="1456.5" cy="568" rx="5" ry="40" transform="rotate(82 1456.5 568)" />
+        <ellipse cx="1444.5" cy="607" rx="5" ry="24" transform="rotate(-26 1444.5 607)" />
+        <ellipse cx="1448.9" cy="646" rx="5" ry="32" transform="rotate(82 1448.9 646)" />
+        <ellipse cx="1469.5" cy="685" rx="5" ry="40" transform="rotate(-26 1469.5 685)" />
+        <ellipse cx="1497.3" cy="724" rx="5" ry="24" transform="rotate(82 1497.3 724)" />
+        <ellipse cx="1522.3" cy="763" rx="5" ry="32" transform="rotate(-26 1522.3 763)" />
+        <ellipse cx="1535.0" cy="802" rx="5" ry="40" transform="rotate(82 1535.0 802)" />
+        <ellipse cx="1532.0" cy="841" rx="5" ry="24" transform="rotate(-26 1532.0 841)" />
       </g>
     </svg>
   )
@@ -1258,17 +1259,10 @@ export default function ReservaTurnoPage() {
     }
 
     return (
-      <section className="success-screen wizard-animate">
-        <SuccessBotanicalSide side="left" />
-        <SuccessBotanicalSide side="right" />
+      <section className="success-screen">
+        <SuccessBotanicalBackground />
 
-        <div className="success-stars" aria-hidden="true">
-          {SUCCESS_STAR_POSITIONS.map(([top, left], index) => (
-            <i key={`${top}-${left}-${index}`} style={{ top: `${top}%`, left: `${left}%` }} />
-          ))}
-        </div>
-
-        <div className="success-hero">
+        <div className="success-hero wizard-animate">
           <div className="success-mark">
             <Check size={36} />
           </div>
@@ -1280,14 +1274,14 @@ export default function ReservaTurnoPage() {
           </div>
 
           <h1 className="success-title">
-            Tu turno está <em>en camino</em>
+            Tu solicitud fue <em>enviada</em>
           </h1>
           <p className="success-subtitle">
             Estamos confirmando con la operaria. Te avisamos por <strong>{successChannels}</strong> en los próximos minutos.
           </p>
         </div>
 
-        <div className="success-card">
+        <div className="success-card wizard-animate">
           <div className="success-card-left">
             <div className="success-date-big">
               <em>{successWeekday}</em> {successDateRest}
@@ -1318,6 +1312,25 @@ export default function ReservaTurnoPage() {
               <span className="success-detail-ic"><Clock3 size={16} /></span>
               <span className="success-detail-lab">Total</span>
               <span className="success-detail-v">{formatCurrency(total)}</span>
+            </div>
+
+            <div className="success-inline-actions-area">
+              <div className="success-mini-actions">
+                <button type="button" className="success-mini-action">
+                  <span className="ic"><CalendarDays size={18} /></span>
+                  <span className="text">
+                    <span className="t">Agendar</span>
+                    <span className="d">Google / Apple</span>
+                  </span>
+                </button>
+                <button type="button" className="success-mini-action">
+                  <span className="ic"><MapPin size={18} /></span>
+                  <span className="text">
+                    <span className="t">Cómo llegar</span>
+                    <span className="d">Ver en Maps</span>
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1363,25 +1376,18 @@ export default function ReservaTurnoPage() {
           </div>
         </div>
 
-        <div className="success-actions">
-          <button type="button" className="success-action">
-            <span className="ic"><CalendarDays size={22} /></span>
-            <span className="t">Agendar</span>
-            <span className="d">Google / Apple</span>
-          </button>
-          <button type="button" className="success-action">
-            <span className="ic"><MapPin size={22} /></span>
-            <span className="t">Cómo llegar</span>
-            <span className="d">Ver en Maps</span>
-          </button>
-          <button type="button" className="success-action">
-            <span className="ic"><MessageCircle size={22} /></span>
-            <span className="t">Contactanos</span>
-            <span className="d">WhatsApp</span>
+        <div className="success-help wizard-animate">
+          <div className="success-help-text">
+            <span className="t">¿Tenés alguna duda?</span>
+            <span className="d">Escribinos por WhatsApp y te respondemos al toque.</span>
+          </div>
+          <button type="button" className="success-help-btn">
+            <span className="ic"><MessageCircle size={15} /></span>
+            Contactanos
           </button>
         </div>
 
-        <div className="success-foot">
+        <div className="success-foot wizard-animate">
           <button type="button" className="success-btn-ghost" onClick={restartReservation}>
             Reservar otro turno
           </button>
@@ -3712,7 +3718,7 @@ export default function ReservaTurnoPage() {
           }
 
           .reserva-page.success-mode {
-            padding: 108px 18px 56px;
+            padding: 84px 18px 56px;
           }
 
           .progress-shell {
@@ -3992,7 +3998,7 @@ export default function ReservaTurnoPage() {
 
         /* Success screen — direct replica baseline from HTML reference */
         .reserva-page.success-mode {
-          padding: 64px 0 80px;
+          padding: 0 0 80px;
           background:
             radial-gradient(ellipse at 50% 0%, rgba(197,160,89,0.18) 0%, transparent 55%),
             radial-gradient(ellipse at 90% 100%, rgba(197,160,89,0.08) 0%, transparent 40%),
@@ -4025,25 +4031,13 @@ export default function ReservaTurnoPage() {
           overflow: visible;
         }
 
-        .success-screen::before {
-          content: none;
-        }
-
-        .success-stars {
+        .success-botanical-bg {
           position: fixed;
           inset: 0;
+          width: 100%;
+          height: 100%;
           pointer-events: none;
           z-index: 0;
-        }
-
-        .success-stars i {
-          position: absolute;
-          width: 2px;
-          height: 2px;
-          border-radius: 50%;
-          background: var(--color-secondary);
-          box-shadow: 0 0 6px var(--color-secondary);
-          opacity: 0.22;
         }
 
         .success-hero {
@@ -4141,6 +4135,8 @@ export default function ReservaTurnoPage() {
 
         .success-card-left {
           padding-right: 36px;
+          display: flex;
+          flex-direction: column;
         }
 
         .success-card-divider {
@@ -4204,47 +4200,66 @@ export default function ReservaTurnoPage() {
         }
 
         .success-tl-title {
-          font-family: var(--font-heading);
-          font-style: italic;
-          font-size: 17px;
+          font-family: var(--font-body);
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.28em;
+          text-transform: uppercase;
           color: var(--color-secondary);
           margin-bottom: 26px;
         }
 
         .success-tl {
-          position: relative;
-          padding-left: 50px;
-          counter-reset: success-step;
-        }
-
-        .success-tl::before {
-          content: '';
-          position: absolute;
-          left: 14px;
-          top: 26px;
-          bottom: 32px;
-          width: 2px;
-          background: linear-gradient(180deg, var(--color-secondary) 0%, var(--color-secondary) 30%, rgba(197,160,89,0.28) 30%, rgba(197,160,89,0.28) 100%);
-          border-radius: 2px;
+          display: flex;
+          flex-direction: column;
         }
 
         .success-ts {
+          display: flex;
+          gap: 18px;
           position: relative;
-          padding-bottom: 34px;
-          counter-increment: success-step;
         }
 
-        .success-ts:last-child {
+        .success-ts + .success-ts {
+          margin-top: 2px;
+        }
+
+        .success-ts-left {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          flex-shrink: 0;
+          width: 28px;
+        }
+
+        .success-ts:not(:last-child) .success-ts-left::after {
+          content: '';
+          width: 2px;
+          flex: 1;
+          min-height: 16px;
+          margin-top: 4px;
+          border-radius: 1px;
+          background: rgba(197,160,89,0.22);
+        }
+
+        .success-ts:first-child .success-ts-left::after {
+          background: linear-gradient(180deg, var(--color-secondary) 50%, rgba(197,160,89,0.22) 50%);
+        }
+
+        .success-ts-body {
+          flex: 1;
+          min-width: 0;
+          padding-bottom: 28px;
+        }
+
+        .success-ts:last-child .success-ts-body {
           padding-bottom: 0;
         }
 
-        .success-ts::before {
-          content: counter(success-step);
-          position: absolute;
-          left: -44px;
-          top: 2px;
-          width: 24px;
-          height: 24px;
+        .success-ts-dot {
+          flex-shrink: 0;
+          width: 28px;
+          height: 28px;
           border-radius: 50%;
           background: var(--color-secondary);
           color: var(--color-primary);
@@ -4254,27 +4269,25 @@ export default function ReservaTurnoPage() {
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 0 0 5px rgba(197,160,89,0.18), 0 0 18px rgba(197,160,89,0.38);
+          box-shadow: 0 0 0 5px rgba(197,160,89,0.18), 0 0 16px rgba(197,160,89,0.30);
+          position: relative;
         }
 
-        .success-ts:first-child::after {
-          content: '';
-          position: absolute;
-          left: -49px;
-          top: -3px;
-          width: 34px;
-          height: 34px;
-          border-radius: 50%;
-          border: 1.5px solid rgba(197,160,89,0.55);
-          animation: ring-pulse 2.2s ease-out infinite;
-          pointer-events: none;
-        }
-
-        .success-ts.pending::before {
-          background: rgba(197,160,89,0.06);
+        .success-ts-dot.pending {
+          background: #1e1409;
           border: 2px solid rgba(197,160,89,0.42);
           color: rgba(197,160,89,0.55);
           box-shadow: none;
+        }
+
+        .success-ts-dot.active::after {
+          content: '';
+          position: absolute;
+          inset: -7px;
+          border-radius: 50%;
+          border: 1.5px solid rgba(197,160,89,0.45);
+          animation: ring-pulse 2.2s ease-out infinite;
+          pointer-events: none;
         }
 
         .success-ts-t {
@@ -4316,50 +4329,125 @@ export default function ReservaTurnoPage() {
           color: rgba(197,160,89,0.65);
         }
 
-        .success-actions {
+        .success-inline-actions-area {
+          margin-top: auto;
+          border-top: 1px solid rgba(197,160,89,0.2);
+          padding: 30px 0 12px;
+        }
+
+        .success-mini-actions {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 12px;
-          margin-bottom: 40px;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+        }
+
+        .success-mini-action {
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(197,160,89,0.2);
+          border-radius: 12px;
+          padding: 12px 14px;
+          text-align: left;
+          cursor: pointer;
+          transition: all 0.2s;
+          color: var(--color-tertiary);
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .success-mini-action:hover {
+          background: rgba(197,160,89,0.1);
+          border-color: var(--color-secondary);
+          transform: translateY(-1px);
+        }
+
+        .success-mini-action .ic {
+          color: var(--color-secondary);
+          display: inline-flex;
+          flex-shrink: 0;
+        }
+
+        .success-mini-action .text {
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+          line-height: 1.2;
+        }
+
+        .success-mini-action .t {
+          font-size: 12.5px;
+          font-weight: 700;
+          color: #fff;
+          letter-spacing: 0.02em;
+        }
+
+        .success-mini-action .d {
+          font-size: 10.5px;
+          color: rgba(249,245,240,0.5);
+          margin-top: 2px;
+        }
+
+        .success-help {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          background: rgba(255,255,255,0.03);
+          border: 1px solid rgba(197,160,89,0.18);
+          border-radius: 14px;
+          padding: 14px 18px 14px 20px;
+          margin-bottom: 36px;
           position: relative;
           z-index: 1;
         }
 
-        .success-action {
-          background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(197,160,89,0.16);
-          border-radius: 16px;
-          padding: 20px 14px;
-          text-align: center;
-          cursor: pointer;
-          transition: all 0.22s;
-          color: var(--color-tertiary);
+        .success-help-text {
           display: flex;
           flex-direction: column;
+          gap: 2px;
+          min-width: 0;
+        }
+
+        .success-help-text .t {
+          font-family: var(--font-heading);
+          font-style: italic;
+          font-size: 17px;
+          color: #fff;
+          line-height: 1.2;
+        }
+
+        .success-help-text .d {
+          font-size: 12.5px;
+          color: rgba(249,245,240,0.55);
+          line-height: 1.4;
+        }
+
+        .success-help-btn {
+          display: inline-flex;
           align-items: center;
           gap: 8px;
-        }
-
-        .success-action:hover {
-          background: rgba(197,160,89,0.09);
-          border-color: var(--color-secondary);
-          transform: translateY(-2px);
-        }
-
-        .success-action .ic {
+          background: rgba(197,160,89,0.1);
+          border: 1px solid rgba(197,160,89,0.32);
           color: var(--color-secondary);
-        }
-
-        .success-action .t {
-          font-size: 13px;
+          padding: 10px 16px;
+          border-radius: 999px;
+          font-size: 12px;
           font-weight: 700;
-          letter-spacing: 0.03em;
-          color: #fff;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          cursor: pointer;
+          transition: all 0.2s;
+          white-space: nowrap;
         }
 
-        .success-action .d {
-          font-size: 11px;
-          color: rgba(249,245,240,0.5);
+        .success-help-btn:hover {
+          background: var(--color-secondary);
+          color: var(--color-primary);
+          border-color: var(--color-secondary);
+        }
+
+        .success-help-btn .ic {
+          display: inline-flex;
         }
 
         .success-foot {
@@ -4452,8 +4540,18 @@ export default function ReservaTurnoPage() {
             padding-top: 28px;
           }
 
-          .success-actions {
-            grid-template-columns: repeat(3, 1fr);
+          .success-mini-actions {
+            grid-template-columns: 1fr;
+          }
+
+          .success-help {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+          }
+
+          .success-help-btn {
+            justify-content: center;
           }
 
           .success-foot {
@@ -4472,316 +4570,9 @@ export default function ReservaTurnoPage() {
           }
         }
 
-        /* Success screen final polish */
-        .success-screen::before,
-        .success-screen::after {
-          content: '';
-          position: absolute;
-          top: 0;
-          bottom: 0;
-          width: 118px;
-          pointer-events: none;
-          opacity: 0.72;
-          z-index: 0;
-          background-repeat: no-repeat;
-          background-size: 100% 100%;
-        }
-
-        .success-screen::before {
-          left: -132px;
-          background-image:
-            linear-gradient(180deg, transparent 0%, rgba(197,160,89,0.18) 12%, rgba(197,160,89,0.22) 50%, rgba(197,160,89,0.18) 88%, transparent 100%),
-            linear-gradient(182deg, transparent 0%, transparent 2%, rgba(197,160,89,0.24) 3%, rgba(197,160,89,0.24) 97%, transparent 98%),
-            radial-gradient(ellipse 14px 56px at 28px 24px, rgba(233,205,140,0.38) 0%, rgba(233,205,140,0.18) 58%, transparent 62%),
-            radial-gradient(ellipse 9px 38px at 72px 72px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
-            radial-gradient(ellipse 12px 50px at 48px 128px, rgba(233,205,140,0.36) 0%, rgba(233,205,140,0.15) 58%, transparent 62%),
-            radial-gradient(ellipse 8px 32px at 18px 188px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
-            radial-gradient(ellipse 14px 60px at 80px 248px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
-            radial-gradient(ellipse 10px 40px at 42px 318px, rgba(233,205,140,0.36) 0%, rgba(233,205,140,0.15) 58%, transparent 62%),
-            radial-gradient(ellipse 15px 62px at 24px 404px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
-            radial-gradient(ellipse 9px 36px at 72px 470px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
-            radial-gradient(ellipse 16px 68px at 52px 560px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
-            radial-gradient(ellipse 11px 44px at 20px 656px, rgba(233,205,140,0.32) 0%, rgba(233,205,140,0.13) 58%, transparent 62%),
-            radial-gradient(ellipse 14px 54px at 78px 732px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.13) 58%, transparent 62%);
-          background-position:
-            0 0,
-            56px 0,
-            0 0,
-            0 0,
-            0 0,
-            0 0,
-            0 0,
-            0 0,
-            0 0,
-            0 0,
-            0 0;
-          background-size:
-            1px 100%,
-            1px 100%,
-            100% 100%,
-            100% 100%,
-            100% 100%,
-            100% 100%,
-            100% 100%,
-            100% 100%,
-            100% 100%,
-            100% 100%,
-            100% 100%;
-        }
-
-        .success-screen::after {
-          right: -132px;
-          transform: scaleX(-1);
-          background-image:
-            linear-gradient(180deg, transparent 0%, rgba(197,160,89,0.18) 12%, rgba(197,160,89,0.22) 50%, rgba(197,160,89,0.18) 88%, transparent 100%),
-            linear-gradient(182deg, transparent 0%, transparent 2%, rgba(197,160,89,0.24) 3%, rgba(197,160,89,0.24) 97%, transparent 98%),
-            radial-gradient(ellipse 14px 56px at 28px 24px, rgba(233,205,140,0.38) 0%, rgba(233,205,140,0.18) 58%, transparent 62%),
-            radial-gradient(ellipse 9px 38px at 72px 72px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
-            radial-gradient(ellipse 12px 50px at 48px 128px, rgba(233,205,140,0.36) 0%, rgba(233,205,140,0.15) 58%, transparent 62%),
-            radial-gradient(ellipse 8px 32px at 18px 188px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
-            radial-gradient(ellipse 14px 60px at 80px 248px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
-            radial-gradient(ellipse 10px 40px at 42px 318px, rgba(233,205,140,0.36) 0%, rgba(233,205,140,0.15) 58%, transparent 62%),
-            radial-gradient(ellipse 15px 62px at 24px 404px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
-            radial-gradient(ellipse 9px 36px at 72px 470px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
-            radial-gradient(ellipse 16px 68px at 52px 560px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.14) 58%, transparent 62%),
-            radial-gradient(ellipse 11px 44px at 20px 656px, rgba(233,205,140,0.32) 0%, rgba(233,205,140,0.13) 58%, transparent 62%),
-            radial-gradient(ellipse 14px 54px at 78px 732px, rgba(233,205,140,0.34) 0%, rgba(233,205,140,0.13) 58%, transparent 62%);
-          background-position:
-            0 0,
-            56px 0,
-            0 0,
-            0 0,
-            0 0,
-            0 0,
-            0 0,
-            0 0,
-            0 0,
-            0 0,
-            0 0,
-            0 0,
-            0 0;
-          background-size:
-            1px 100%,
-            1px 100%,
-            100% 100%,
-            100% 100%,
-            100% 100%,
-            100% 100%,
-            100% 100%,
-            100% 100%,
-            100% 100%,
-            100% 100%,
-            100% 100%,
-            100% 100%,
-            100% 100%;
-        }
-
-        .success-tl::before {
-          left: 18px;
-          top: 18px;
-          bottom: 18px;
-        }
-
-        .success-ts::before {
-          left: -40px;
-          top: 0;
-        }
-
-        .success-ts:first-child::after {
-          left: -45px;
-          top: -5px;
-        }
-
-        @media (max-width: 1200px) {
-          .success-screen::before,
-          .success-screen::after {
-            width: 88px;
-          }
-
-          .success-screen::before {
-            left: -94px;
-          }
-
-          .success-screen::after {
-            right: -94px;
-          }
-        }
-
         @media (max-width: 860px) {
-          .success-screen::before,
-          .success-screen::after {
+          .success-botanical-bg {
             display: none;
-          }
-        }
-
-        .success-screen::before,
-        .success-screen::after {
-          content: none;
-        }
-
-        .success-botanical-sides {
-          position: absolute;
-          inset: 0;
-          left: 50%;
-          transform: translateX(-50%);
-          width: min(100vw, 1600px);
-          height: 100%;
-          pointer-events: none;
-          opacity: 0.9;
-          z-index: 0;
-          overflow: visible;
-        }
-
-        .success-hero,
-        .success-card,
-        .success-actions,
-        .success-foot {
-          position: relative;
-          z-index: 1;
-        }
-
-        .success-tl {
-          padding-left: 54px;
-        }
-
-        .success-tl::before {
-          left: 22px;
-          top: 12px;
-          bottom: 12px;
-        }
-
-        .success-ts::before {
-          left: -42px;
-          top: 0;
-        }
-
-        .success-ts:first-child::after {
-          left: -47px;
-          top: -5px;
-        }
-
-        @media (max-width: 860px) {
-          .success-botanical-sides {
-            display: none;
-          }
-        }
-        
-        /* Success screen final edge ornaments + centered segmented timeline */
-        .success-botanical-side {
-          position: fixed !important;
-          top: 0 !important;
-          width: 248px !important;
-          height: 100vh !important;
-          opacity: 0.94 !important;
-          z-index: 0 !important;
-          pointer-events: none !important;
-        }
-
-        .success-botanical-side-left {
-          left: 28px !important;
-        }
-
-        .success-botanical-side-right {
-          right: 28px !important;
-        }
-
-        .success-tl {
-          display: flex !important;
-          flex-direction: column !important;
-          padding-left: 0 !important;
-        }
-
-        .success-tl::before,
-        .success-tl::after,
-        .success-ts::before,
-        .success-ts::after {
-          content: none !important;
-        }
-
-        .success-ts {
-          display: flex !important;
-          gap: 18px !important;
-          position: relative !important;
-          padding-bottom: 0 !important;
-        }
-
-        .success-ts + .success-ts {
-          margin-top: 2px !important;
-        }
-
-        .success-ts-left {
-          display: flex !important;
-          flex-direction: column !important;
-          align-items: center !important;
-          flex-shrink: 0 !important;
-          width: 28px !important;
-        }
-
-        .success-ts:not(:last-child) .success-ts-left::after {
-          content: '' !important;
-          width: 2px !important;
-          flex: 1 1 auto !important;
-          min-height: 18px !important;
-          margin-top: 4px !important;
-          border-radius: 999px !important;
-          background: rgba(197,160,89,0.24) !important;
-        }
-
-        .success-ts:first-child .success-ts-left::after {
-          background: linear-gradient(180deg, var(--color-secondary) 50%, rgba(197,160,89,0.24) 50%) !important;
-          box-shadow: 0 0 12px rgba(197,160,89,0.18) !important;
-        }
-
-        .success-ts-body {
-          flex: 1 1 auto !important;
-          min-width: 0 !important;
-          padding-bottom: 28px !important;
-        }
-
-        .success-ts:last-child .success-ts-body {
-          padding-bottom: 0 !important;
-        }
-
-        .success-ts-dot {
-          flex-shrink: 0 !important;
-          width: 28px !important;
-          height: 28px !important;
-          border-radius: 999px !important;
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          font-family: var(--font-body) !important;
-          font-size: 11px !important;
-          font-weight: 800 !important;
-          position: relative !important;
-        }
-
-        .success-ts-dot.active {
-          background: var(--color-secondary) !important;
-          color: var(--color-primary) !important;
-          box-shadow: 0 0 0 5px rgba(197,160,89,0.18), 0 0 16px rgba(197,160,89,0.3) !important;
-        }
-
-        .success-ts-dot.active::after {
-          content: '' !important;
-          position: absolute !important;
-          inset: -7px !important;
-          border-radius: 999px !important;
-          border: 1.5px solid rgba(197,160,89,0.45) !important;
-          animation: ring-pulse 2.2s ease-out infinite !important;
-          pointer-events: none !important;
-        }
-
-        .success-ts-dot.pending {
-          background: #1e1409 !important;
-          border: 2px solid rgba(197,160,89,0.42) !important;
-          color: rgba(197,160,89,0.55) !important;
-          box-shadow: none !important;
-        }
-
-        @media (max-width: 860px) {
-          .success-botanical-side {
-            display: none !important;
           }
         }
       `}</style>
