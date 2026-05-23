@@ -2,7 +2,7 @@
 
 > Fuente de verdad compartida entre Backend (.NET Core) y Frontend Web (React).
 > Define el contrato de API, modelos, enums y convenciones de nombrado.
-> Última actualización: Mayo 2026 — v6: disponibilidad por subservicio/variante, background job de emails activo cada 15min, post-turno diferido por configuración, endpoint `/health` documentado.
+> Última actualización: Mayo 2026 — v7: endpoint `/auth/completar-perfil` para onboarding post-Google, contrato `CompletarPerfilRequest`, restricciones de autocompletado único y errores de negocio asociados.
 
 ---
 
@@ -113,6 +113,7 @@ Generados por `JwtService.GenerateAccessToken(Usuario)`:
 | POST | `/auth/refresh` | Anónimo | Rota ambos tokens |
 | POST | `/auth/logout` | Anónimo | Revoca refresh token |
 | GET | `/auth/me` | [Authorize] | UsuarioDto del token actual |
+| PATCH | `/auth/completar-perfil` | [Authorize] | Flujo excepcional de onboarding post-Google. Solo Cliente. Completa `telefono` y/o `sexo` faltantes una única vez. Devuelve `UsuarioDto`. No reemplaza `PATCH /usuarios/{id}`. |
 | POST | `/auth/cambiar-password` | [Authorize] | Cambia contraseña |
 | POST | `/auth/forgot-password` | Anónimo | Envía email de recuperación. Siempre 200. |
 | POST | `/auth/reset-password` | Anónimo | Valida token y cambia password |
@@ -285,10 +286,21 @@ RefreshRequest       { refreshToken: string }
 AuthResponse         { accessToken: string; refreshToken: string; usuario: UsuarioDto }
 UsuarioDto           { id: number; email: string; nombre: string; apellido: string; telefono?: string; sexo: string; rol: string; estado: string; motivoBloqueo?: string; debeCambiarPassword: boolean; avatarUrl?: string; creadoEn: string }
 CambiarPasswordRequest   { passwordActual: string; passwordNueva: string }
+CompletarPerfilRequest   { telefono?: string; sexo?: "Masculino" | "Femenino" }
 ForgotPasswordRequest    { email: string }
 ResetPasswordRequest     { token: string; passwordNueva: string }
 BloquearUsuarioRequest   { motivo: string }
 ```
+
+**Restricciones de `PATCH /auth/completar-perfil`:**
+- Toma el usuario desde el JWT; no recibe `userId` por ruta.
+- Solo aplica a usuarios autenticados con rol `Cliente`.
+- Solo permite completar campos realmente faltantes.
+- `telefono` no puede cambiarse si ya estaba completo.
+- `sexo` no puede cambiarse si ya estaba completo con `Masculino` o `Femenino`.
+- `NoEspecifica` no es válido en este flujo.
+- Si ambos campos ya estaban completos, devuelve error de negocio.
+- Respuesta exitosa: `UsuarioDto` actualizado.
 
 ### 5.2 Usuarios
 
@@ -618,6 +630,15 @@ Servicios/precios:    Ver DatabaseSeeder.cs (precios Marzo 2026)
 ## 9. Códigos de error
 
 Ver `ETEREO_BACKEND_SOT.md` sección 8 para la tabla completa de `ErrorCode` por módulo y sus HTTP status codes.
+
+**Errores nuevos — Auth / completar perfil:**
+| Código | Status | Mensaje |
+|---|---|---|
+| `NO_PERMITIDO` | 403 | Solo los clientes pueden usar este flujo |
+| `DATOS_INCOMPLETOS` | 400 | Falta completar telefono y/o sexo requerido |
+| `SEXO_INVALIDO` | 400 | El sexo debe ser Masculino o Femenino |
+| `CAMPO_YA_COMPLETO` | 409 | Se intentó modificar telefono o sexo ya completado |
+| `PERFIL_YA_COMPLETO` | 409 | Telefono y sexo ya estaban completos |
 
 **Errores nuevos — Turnos:**
 | Código | Status | Mensaje |
