@@ -21,6 +21,7 @@ interface AuthState {
   refreshToken: string | null
   usuario: UsuarioDto | null
   setAuth: (accessToken: string, refreshToken: string, usuario: UsuarioDto) => void
+  updateUsuario: (patch: Partial<UsuarioDto>) => void
   clearAuth: () => void
   initializeAuth: () => void
 }
@@ -36,6 +37,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.setItem(STORAGE_KEYS.USUARIO, JSON.stringify(usuario))
     set({ accessToken, refreshToken, usuario })
   },
+
+  updateUsuario: (patch) =>
+    set((state) => {
+      if (!state.usuario) return state
+      const usuario = { ...state.usuario, ...patch }
+      localStorage.setItem(STORAGE_KEYS.USUARIO, JSON.stringify(usuario))
+      return { usuario }
+    }),
 
   clearAuth: () => {
     localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN)

@@ -2,7 +2,7 @@
 
 > Documento técnico maestro del frontend. Refleja el diseño acordado del sistema de gestión de la estética Etereo.
 > Combina estado actual del código + comportamiento objetivo cuando un módulo todavía no fue implementado por completo.
-> Última actualización: Mayo 2026 — v7: wizard público `/reservar` implementado como prototipo funcional, entrypoint por datos del cliente y filtrado inicial por sexo.
+> Última actualización: Mayo 2026 — v8: wizard público `/reservar` refinado visualmente, entrypoint por datos del cliente, filtrado inicial por sexo y pantalla de éxito alineada al HTML aprobado.
 
 ---
 
@@ -353,6 +353,7 @@ Paso 5 — Cupón
 Paso 6 — Confirmar
   → Resumen final de salón, servicio, selección, fecha/hora, duración y total
   → Éxito visual posterior con estado "Pendiente de confirmación"
+  → La pantalla final replica la maqueta HTML aprobada: hero centrado, card principal dividida, timeline vertical segmentada, mini acciones inline y bloque de ayuda
 ```
 
 ### Reglas de estado visibles ya implementadas en UI
@@ -362,6 +363,7 @@ Paso 6 — Confirmar
 - Si el usuario vuelve un paso atrás, se limpia el estado del paso abandonado para no arrastrar selecciones inválidas.
 - El patrón visual `no seleccionado / seleccionado / bloqueado` está unificado progresivamente entre cards de salón, servicios, combos, zonas y slots.
 - El resumen lateral aparece a partir de la selección real del turno; no en el primer paso de datos/servicio.
+- La pantalla de éxito no usa ya una variante libre: sigue la composición aprobada en HTML como fuente de verdad visual.
 
 ### Alcance actual vs pendiente
 
@@ -373,6 +375,7 @@ Paso 6 — Confirmar
 - Ocultamiento de Salón 2 para sexo masculino
 - Resumen lateral y resumen mobile
 - Cupón simulado y descuentos visuales
+- Pantalla de éxito alineada al diseño standalone aprobado (`hero + card principal + timeline + help block + footer`)
 
 **Todavía pendiente de conectar o endurecer**
 - Datos reales desde `GET /servicios`

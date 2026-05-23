@@ -13,6 +13,8 @@ import LandingPage from '@/pages/public/LandingPage'
 import LoginPage from '@/pages/auth/LoginPage'
 import RegistroPage from '@/pages/auth/RegistroPage'
 import CambiarPasswordPage from '@/pages/auth/CambiarPasswordPage'
+import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage'
+import ResetPasswordPage from '@/pages/auth/ResetPasswordPage'
 
 // Portal (cliente)
 import ReservaTurnoPage from '@/pages/portal/ReservaTurnoPage'
@@ -117,6 +119,8 @@ export default function App() {
           {/* ── Auth — layout propio completo, sin PublicHeader ── */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/registro" element={<RegistroPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/cambiar-password" element={<CambiarPasswordPage />} />
 
           {/* ── Calificar — anónimo con token JWT en query param ── */}
