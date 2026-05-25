@@ -2,7 +2,7 @@
 
 > Fuente de verdad compartida entre Backend (.NET Core) y Frontend Web (React).
 > Define el contrato de API, modelos, enums y convenciones de nombrado.
-> Última actualización: Mayo 2026 — v9: convivencia de `cupones` exclusivos para clientes registrados con `codigos de descuento` manuales para registrados e invitados, más soporte en `POST /turnos` y `POST /sesiones`.
+> Última actualización: Mayo 2026 — v10: disponibilidad de operarias rediseñada con plantilla semanal base, excepciones mensuales, múltiples bloques por día y calendario consolidado.
 
 ---
 
@@ -139,8 +139,13 @@ Generados por `JwtService.GenerateAccessToken(Usuario)`:
 | GET | `/disponibilidad/salon` | Admin\|Operario |
 | POST | `/disponibilidad/salon` | Admin |
 | DELETE | `/disponibilidad/salon/{id}` | Admin |
-| GET | `/disponibilidad/operario/{id}` | Admin\|Operario |
-| POST | `/disponibilidad/operario` | Admin\|Operario |
+| GET | `/disponibilidad/operario/{id}/base` | Admin\|Operario |
+| PUT | `/disponibilidad/operario/{id}/base` | Admin\|Operario |
+| GET | `/disponibilidad/operario/{id}/excepciones?mes=YYYY-MM` | Admin\|Operario |
+| POST | `/disponibilidad/operario/{id}/excepciones` | Admin\|Operario |
+| PUT | `/disponibilidad/operario/{id}/excepciones/{excepcionId}` | Admin\|Operario |
+| DELETE | `/disponibilidad/operario/{id}/excepciones/{excepcionId}` | Admin\|Operario |
+| GET | `/disponibilidad/operario/{id}/calendario?mes=YYYY-MM` | Admin\|Operario |
 
 ### 4.4 Servicios, Subservicios & Variantes
 
@@ -381,7 +386,18 @@ AsignarSubservicioRequest       { subservicioId: number; porcentajeComision: num
 ActualizarComisionRequest       { porcentajeComision: number }
 ActualizarVistasRequest         { verMisTurnos: boolean; verMisComisiones: boolean; verMiCalificacion: boolean; verMisEstadisticas: boolean }
 CrearDisponibilidadSalonRequest    { fecha: string; salon: string; motivoId: number; descripcion?: string }
-CrearDisponibilidadOperarioRequest { operarioId: number; fecha: string; trabaja: boolean; motivoAusencia?: string }
+DisponibilidadBaseBloqueDto        { horaDesde: string; horaHasta: string }
+DisponibilidadBaseDiaDto           { diaSemana: string; trabaja: boolean; bloques: DisponibilidadBaseBloqueDto[] }
+ActualizarDisponibilidadBaseRequest { dias: DisponibilidadBaseDiaDto[] }
+ExcepcionDisponibilidadBloqueDto   { horaDesde: string; horaHasta: string }
+CrearExcepcionDisponibilidadRequest {
+  fechaDesde: string; fechaHasta: string; trabaja: boolean; motivo?: string;
+  bloques?: ExcepcionDisponibilidadBloqueDto[]
+}
+ActualizarExcepcionDisponibilidadRequest {
+  fechaDesde: string; fechaHasta: string; trabaja: boolean; motivo?: string;
+  bloques?: ExcepcionDisponibilidadBloqueDto[]
+}
 
 // Responses
 OperarioSubservicioDto  { id: number; operarioId: number; subservicioId: number;
@@ -390,8 +406,24 @@ OperarioVistasDto       { id: number; operarioId: number; verMisTurnos: boolean;
                           verMiCalificacion: boolean; verMisEstadisticas: boolean }
 DisponibilidadSalonDto    { id: number; fecha: string; salon: string; motivoId: number;
                             nombreMotivo: string; descripcion?: string; creadoPorId: number }
-DisponibilidadOperarioDto { id: number; operarioId: number; fecha: string; trabaja: boolean; motivoAusencia?: string }
+ExcepcionDisponibilidadDto {
+  id: number; fechaDesde: string; fechaHasta: string; trabaja: boolean; motivo?: string;
+  bloques: ExcepcionDisponibilidadBloqueDto[]
+}
+DisponibilidadCalendarioDiaDto {
+  fecha: string; trabaja: boolean; origen: "Base" | "Excepcion"; motivo?: string;
+  bloques: DisponibilidadBaseBloqueDto[]
+}
 ```
+
+**Reglas de disponibilidad de operarias:**
+- La disponibilidad diaria se resuelve con prioridad `Excepcion > Base`.
+- `mes` en endpoints de excepciones y calendario usa formato `YYYY-MM`.
+- La plantilla base admite cero, uno o múltiples bloques por día.
+- Si `trabaja = false`, no puede haber bloques.
+- Si `trabaja = true`, debe haber al menos un bloque válido.
+- No se permiten bloques superpuestos en un mismo día ni excepciones superpuestas para la misma operaria.
+- El endpoint de calendario devuelve el mes completo aunque la operaria no tenga plantilla cargada; en ese caso todos los días quedan sin disponibilidad.
 
 ### 5.5 Turnos y Sesiones
 
@@ -440,7 +472,20 @@ DisponibilidadDto { disponible: boolean; motivoNoDisponible?: string;
 - La duración total se calcula como la suma real de `duracionMin` de cada subservicio o variante.
 - La disponibilidad se calcula para la sesión completa, no por zona individual.
 - Solo devuelve horarios donde una misma operaria puede realizar todas las zonas.
+- Usa la disponibilidad resuelta de operarias con plantilla semanal base + excepciones.
 - Reutiliza `DisponibilidadDto` como respuesta.
+
+**Reglas de `GET /turnos/disponibilidad`:**
+- Usa `fecha + subservicioId + varianteId? + duracionMin?`.
+- Evalúa bloques múltiples por día y jornadas cortadas.
+- Solo devuelve horarios donde al menos una operaria activa tenga un bloque que cubra todo el slot solicitado.
+
+**Errores de negocio/validación agregados para disponibilidad:**
+- `MES_INVALIDO`
+- `DIA_SEMANA_INVALIDO`
+- `BLOQUES_INVALIDOS`
+- `EXCEPCION_SUPERPUESTA`
+- `EXCEPCION_NO_ENCONTRADA`
 
 **Reglas de descuentos en `POST /turnos` y `POST /sesiones`:**
 - `cuponId` sigue reservado a clientes registrados.
