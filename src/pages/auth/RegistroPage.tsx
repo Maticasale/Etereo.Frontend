@@ -8,8 +8,10 @@ import AuthFrame, { authInputStyle } from './AuthFrame'
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
-import { getErrorCode } from '@/lib/errors'
-import type { RegisterRequest } from '@/types/api'
+import { getErrorCode, getErrorMessage } from '@/lib/errors'
+import { needsProfileCompletion } from '@/lib/authFlow'
+import { useAuthBackRedirect } from '@/hooks/useAuthBackRedirect'
+import type { RegisterRequest, UsuarioDto } from '@/types/api'
 
 const registerSchema = z.object({
   nombre: z.string().min(2, 'Ingresá tu nombre'),
@@ -26,14 +28,14 @@ const registerSchema = z.object({
 
 type RegisterFormValues = z.infer<typeof registerSchema>
 
-function mapBackendError(codigo: string | undefined): string {
+function mapBackendError(codigo: string | undefined, fallback: string): string {
   switch (codigo) {
     case 'EMAIL_YA_REGISTRADO':
       return 'Ya existe una cuenta con este email'
     case 'USAR_GOOGLE_AUTH':
       return 'Esta cuenta ya existe con Google. Ingresá con Google.'
     default:
-      return 'No pudimos crear tu cuenta'
+      return fallback || 'No pudimos crear tu cuenta'
   }
 }
 
@@ -71,14 +73,27 @@ export default function RegistroPage() {
     defaultValues: { sexo: 'Femenino' },
   })
 
+  const redirectParam = searchParams.get('redirect') ? `?redirect=${searchParams.get('redirect')}` : ''
+  useAuthBackRedirect({ to: `/login${redirectParam}` })
+
   const selectedSexo = watch('sexo')
 
-  function redirectAfterAuth() {
-    if (searchParams.get('redirect') === 'reserva') {
+  function redirectAfterAuth(usuario: UsuarioDto) {
+    const redirectToReserva = searchParams.get('redirect') === 'reserva'
+
+    if (needsProfileCompletion(usuario)) {
+      navigate(
+        redirectToReserva ? '/completar-perfil?redirect=reserva' : '/completar-perfil',
+        { replace: true },
+      )
+      return
+    }
+
+    if (redirectToReserva) {
       navigate('/?iniciar_reserva=1', { replace: true })
       return
     }
-    navigate('/', { replace: true })
+    navigate('/mi-cuenta', { replace: true })
   }
 
   const onSubmit = async (values: RegisterFormValues) => {
@@ -96,9 +111,9 @@ export default function RegistroPage() {
       const { accessToken, refreshToken, usuario } = await authApi.register(payload)
       setAuth(accessToken, refreshToken, usuario)
       toast.success(`¡Tu cuenta ya está lista, ${usuario.nombre}!`)
-      redirectAfterAuth()
+      redirectAfterAuth(usuario)
     } catch (err) {
-      setGlobalError(mapBackendError(getErrorCode(err)))
+      setGlobalError(mapBackendError(getErrorCode(err), getErrorMessage(err)))
     } finally {
       setIsLoading(false)
     }
@@ -112,15 +127,13 @@ export default function RegistroPage() {
       const { accessToken, refreshToken, usuario } = await authApi.googleLogin(credentialResponse.credential)
       setAuth(accessToken, refreshToken, usuario)
       toast.success(`¡Tu cuenta ya está lista, ${usuario.nombre}!`)
-      redirectAfterAuth()
+      redirectAfterAuth(usuario)
     } catch (err) {
-      setGlobalError(mapBackendError(getErrorCode(err)))
+      setGlobalError(mapBackendError(getErrorCode(err), getErrorMessage(err)))
     } finally {
       setIsGoogleLoading(false)
     }
   }
-
-  const redirectParam = searchParams.get('redirect') ? `?redirect=${searchParams.get('redirect')}` : ''
 
   return (
     <AuthFrame
@@ -154,6 +167,9 @@ export default function RegistroPage() {
             <div style={{ display: 'flex', alignItems: 'center', borderBottom: `1px solid ${errors.telefono ? 'var(--color-error)' : 'var(--color-neutral)'}`, paddingBottom: 10 }}>
               <input type="text" placeholder="3492 55-4411" style={authInputStyle} {...register('telefono')} />
             </div>
+            <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 6, lineHeight: 1.45 }}>
+              Escribí solo la caracteristica y el numero, sin <strong>+54 9</strong>.
+            </p>
           </Field>
           <Field label="Email" error={errors.email?.message}>
             <div style={{ display: 'flex', alignItems: 'center', borderBottom: `1px solid ${errors.email ? 'var(--color-error)' : 'var(--color-neutral)'}`, paddingBottom: 10 }}>

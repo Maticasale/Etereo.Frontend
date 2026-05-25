@@ -1,5 +1,12 @@
-// usuarios
+import apiClient from './client'
+import type { ActualizarUsuarioRequest, UsuarioDto } from '@/types/api'
+
+const BASE = '/usuarios'
 
 export const usuariosApi = {
-  // TODO: implementar endpoints según ETEREO_CONTRATO_SOT.md
+  actualizar: (id: number, data: ActualizarUsuarioRequest) =>
+    apiClient.patch(`${BASE}/${id}`, data),
+
+  obtener: (id: number) =>
+    apiClient.get<{ data: UsuarioDto }>(`${BASE}/${id}`).then((r) => r.data.data),
 }

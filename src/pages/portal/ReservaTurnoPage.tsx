@@ -27,6 +27,20 @@ import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { getErrorMessage } from '@/lib/errors'
+import { serviciosApi } from '@/api/servicios'
+import { codigosDescuentoApi, cuponesApi } from '@/api/cupones'
+import { sesionesApi, turnosApi } from '@/api/turnos'
+import type {
+  CodigoDescuentoDto,
+  CuponDto,
+  DisponibilidadDto,
+  ServicioDto,
+  SesionDto,
+  SubservicioDto,
+  TurnoDto,
+  VarianteDto,
+} from '@/types/api'
 
 type WizardStep = 0 | 1 | 2 | 3 | 4 | 5 | 6
 type SelectedSalonId = SalonOption['id'] | null
@@ -40,19 +54,23 @@ interface SalonOption {
 }
 
 interface ServiceOption {
-  id: string
+  id: number
   salonId: SalonOption['id']
   nombre: string
   descripcion: string
+  subservicios: SubservicioDto[]
+  iconKey: string
 }
 
 interface ComboOption {
-  id: string
+  id: number
   nombre: string
   detalle: string
   precio: number
   duracionMin: number
   items: string[]
+  subservicioId: number
+  varianteId?: number
 }
 
 interface ZoneOption {
@@ -61,27 +79,25 @@ interface ZoneOption {
   precio: number
   duracionMin: number
   grupo: 'Mujeres' | 'Hombres' | 'General'
-}
-
-interface CouponOption {
-  id: string
-  codigo: string
-  descripcion: string
-  vence: string
-  tipo: 'Porcentaje' | 'Monto'
-  valor: number
+  subservicioId: number
+  varianteId?: number
 }
 
 interface TimeSlot {
   hora: string
-  disponible: boolean
 }
 
 interface DayAvailability {
   id: string
   etiqueta: string
   fechaLarga: string
+  fechaIso: string
   slots: TimeSlot[]
+}
+
+interface TimeGroupDefinition {
+  label: string
+  filter: (hora: string) => boolean
 }
 
 interface GuestData {
@@ -94,37 +110,11 @@ interface GuestData {
 
 const STEP_LABELS = ['Tus datos', 'Servicio', 'Selección', 'Horario', 'Cupón', 'Confirmar', 'Éxito'] as const
 
-const SALONES: SalonOption[] = [
-  {
-    id: 'salon1',
-    nombre: 'Salón 1',
-    titulo: 'Estética & bienestar',
-    descripcion: 'Depilación Láser · Depilación Descartable · Masajes · Cejas & Pestañas · Facial',
-    servicios: ['Depilación Láser', 'Depilación Descartable', 'Masajes', 'Cejas & Pestañas', 'Facial'],
-  },
-  {
-    id: 'salon2',
-    nombre: 'Salón 2',
-    titulo: 'Peluquería',
-    descripcion: 'Color · Corte · Brushing · Tratamientos · Peinados',
-    servicios: ['Peluquería'],
-  },
-]
-
-const SERVICIOS: ServiceOption[] = [
-  { id: 'laser', salonId: 'salon1', nombre: 'Depilación Láser', descripcion: 'Axilas, cavado, piernas, brazos y rostro.' },
-  { id: 'descartable', salonId: 'salon1', nombre: 'Depilación Descartable', descripcion: 'Cavado, axilas, rostro, piernas y brazos.' },
-  { id: 'masajes', salonId: 'salon1', nombre: 'Masajes', descripcion: 'Descontracturantes, relajantes, drenaje y piedras calientes.' },
-  { id: 'cejas', salonId: 'salon1', nombre: 'Cejas & Pestañas', descripcion: 'Perfilado, diseño, lifting y tinte.' },
-  { id: 'facial', salonId: 'salon1', nombre: 'Facial', descripcion: 'Limpieza profunda, hidratación y dermaplaning.' },
-  { id: 'peluqueria', salonId: 'salon2', nombre: 'Peluquería', descripcion: 'Color, corte, brushing, tratamientos y peinados.' },
-]
-
 const SERVICE_ICONS: Record<string, LucideIcon> = {
-  laser: Zap,
-  descartable: Leaf,
+  'depilacion-laser': Zap,
+  'depilacion-descartable': Leaf,
   masajes: HandHeart,
-  cejas: Eye,
+  'cejas-pestanas': Eye,
   facial: Flower2,
   peluqueria: Scissors,
 }
@@ -132,173 +122,11 @@ const SERVICE_ICONS: Record<string, LucideIcon> = {
 function getServiceIcon(serviceId: string): LucideIcon {
   return SERVICE_ICONS[serviceId] ?? Sparkles
 }
-
-const LASER_COMBOS: ComboOption[] = [
-  {
-    id: 'pack1',
-    nombre: 'Pack 1',
-    detalle: 'Axilas + Cavado completo + Media pierna + Tira de cola (opc.)',
-    precio: 28500,
-    duracionMin: 75,
-    items: ['Axila', 'Cavado completo', 'Media pierna'],
-  },
-  {
-    id: 'pack3',
-    nombre: 'Pack 3',
-    detalle: 'Axilas + Cavado completo + Tira de cola + Pierna completa',
-    precio: 29900,
-    duracionMin: 80,
-    items: ['Axila', 'Cavado completo', 'Tira de cola', 'Pierna completa'],
-  },
-  {
-    id: 'pack4',
-    nombre: 'Pack 4',
-    detalle: 'Rostro completo + Axilas + Pierna completa',
-    precio: 28500,
-    duracionMin: 70,
-    items: ['Rostro completo', 'Axila', 'Pierna completa'],
-  },
-  {
-    id: 'pack5',
-    nombre: 'Pack 5',
-    detalle: 'Axilas + Cavado completo + Tira de cola',
-    precio: 20100,
-    duracionMin: 55,
-    items: ['Axila', 'Cavado completo', 'Tira de cola'],
-  },
-  {
-    id: 'completo',
-    nombre: 'Completo',
-    detalle: 'Pack premium de zonas corporales',
-    precio: 36000,
-    duracionMin: 95,
-    items: ['Axila', 'Cavado completo', 'Media pierna', 'Tira de cola', 'Brazo completo'],
-  },
-]
-
-const LASER_ZONES: ZoneOption[] = [
-  { id: 'axila', nombre: 'Axila', precio: 9300, duracionMin: 20, grupo: 'General' },
-  { id: 'cavado-completo', nombre: 'Cavado completo', precio: 12400, duracionMin: 25, grupo: 'Mujeres' },
-  { id: 'media-pierna', nombre: 'Media pierna', precio: 13300, duracionMin: 30, grupo: 'Mujeres' },
-  { id: 'pierna-completa', nombre: 'Pierna completa', precio: 15800, duracionMin: 40, grupo: 'Mujeres' },
-  { id: 'brazo-completo', nombre: 'Brazo completo', precio: 13400, duracionMin: 30, grupo: 'General' },
-  { id: 'tira-cola', nombre: 'Tira de cola', precio: 6900, duracionMin: 15, grupo: 'Mujeres' },
-  { id: 'rostro-completo', nombre: 'Rostro completo', precio: 10800, duracionMin: 25, grupo: 'General' },
-  { id: 'espalda', nombre: 'Espalda', precio: 14900, duracionMin: 35, grupo: 'Hombres' },
-  { id: 'abdomen', nombre: 'Abdomen', precio: 9800, duracionMin: 20, grupo: 'Hombres' },
-  { id: 'hombros', nombre: 'Hombros', precio: 9200, duracionMin: 20, grupo: 'Hombres' },
-]
-
-const COUPONS_AUTH: CouponOption[] = [
-  {
-    id: 'bienvenida10',
-    codigo: 'BIENVENIDA10',
-    descripcion: '10% de descuento para todos los servicios',
-    vence: '31/05/2026',
-    tipo: 'Porcentaje',
-    valor: 10,
-  },
-  {
-    id: 'laser20',
-    codigo: 'LASER20',
-    descripcion: '20% en Depilación Láser',
-    vence: '15/06/2026',
-    tipo: 'Porcentaje',
-    valor: 20,
-  },
-]
-
-const AVAILABILITY: DayAvailability[] = [
-  {
-    id: 'lun19',
-    etiqueta: 'Lun 19',
-    fechaLarga: 'Lunes 19 de mayo',
-    slots: [
-      { hora: '09:00', disponible: true },
-      { hora: '09:30', disponible: true },
-      { hora: '10:00', disponible: false },
-      { hora: '10:30', disponible: true },
-      { hora: '11:00', disponible: true },
-      { hora: '11:30', disponible: false },
-      { hora: '12:00', disponible: true },
-      { hora: '12:30', disponible: true },
-    ],
-  },
-  {
-    id: 'mar20',
-    etiqueta: 'Mar 20',
-    fechaLarga: 'Martes 20 de mayo',
-    slots: [
-      { hora: '09:00', disponible: true },
-      { hora: '09:30', disponible: false },
-      { hora: '10:00', disponible: true },
-      { hora: '10:30', disponible: true },
-      { hora: '11:00', disponible: false },
-      { hora: '11:30', disponible: true },
-      { hora: '12:00', disponible: true },
-      { hora: '12:30', disponible: false },
-    ],
-  },
-  {
-    id: 'mie21',
-    etiqueta: 'Mié 21',
-    fechaLarga: 'Miércoles 21 de mayo',
-    slots: [
-      { hora: '09:00', disponible: false },
-      { hora: '09:30', disponible: false },
-      { hora: '10:00', disponible: false },
-      { hora: '10:30', disponible: true },
-      { hora: '11:00', disponible: true },
-      { hora: '11:30', disponible: true },
-      { hora: '12:00', disponible: false },
-      { hora: '12:30', disponible: true },
-    ],
-  },
-  {
-    id: 'jue22',
-    etiqueta: 'Jue 22',
-    fechaLarga: 'Jueves 22 de mayo',
-    slots: [
-      { hora: '09:00', disponible: true },
-      { hora: '09:30', disponible: true },
-      { hora: '10:00', disponible: false },
-      { hora: '10:30', disponible: true },
-      { hora: '11:00', disponible: true },
-      { hora: '11:30', disponible: true },
-      { hora: '12:00', disponible: true },
-      { hora: '12:30', disponible: false },
-    ],
-  },
-  {
-    id: 'vie23',
-    etiqueta: 'Vie 23',
-    fechaLarga: 'Viernes 23 de mayo',
-    slots: [
-      { hora: '09:00', disponible: true },
-      { hora: '09:30', disponible: true },
-      { hora: '10:00', disponible: true },
-      { hora: '10:30', disponible: false },
-      { hora: '11:00', disponible: true },
-      { hora: '11:30', disponible: true },
-      { hora: '12:00', disponible: false },
-      { hora: '12:30', disponible: true },
-    ],
-  },
-  {
-    id: 'sab24',
-    etiqueta: 'Sáb 24',
-    fechaLarga: 'Sábado 24 de mayo',
-    slots: [
-      { hora: '09:00', disponible: true },
-      { hora: '09:30', disponible: false },
-      { hora: '10:00', disponible: false },
-      { hora: '10:30', disponible: true },
-      { hora: '11:00', disponible: true },
-      { hora: '11:30', disponible: true },
-      { hora: '12:00', disponible: false },
-      { hora: '12:30', disponible: false },
-    ],
-  },
+const CALENDAR_WEEKDAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] as const
+const TIME_GROUPS: TimeGroupDefinition[] = [
+  { label: 'Mañana', filter: (hora) => hora < '13:00' },
+  { label: 'Tarde', filter: (hora) => hora >= '13:00' && hora < '18:00' },
+  { label: 'Noche', filter: (hora) => hora >= '18:00' },
 ]
 
 const DEFAULT_GUEST: GuestData = {
@@ -307,6 +135,123 @@ const DEFAULT_GUEST: GuestData = {
   telefono: '3492 55-4411',
   email: '',
   sexo: '',
+}
+
+function normalizeTextKey(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/&/g, ' ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+function mapSalonId(salon: string): SelectedSalonId {
+  if (salon === 'Salon1') return 'salon1'
+  if (salon === 'Salon2') return 'salon2'
+  return null
+}
+
+function mapGrupoFromSexo(sexo: string): ZoneOption['grupo'] {
+  if (sexo === 'Femenino') return 'Mujeres'
+  if (sexo === 'Masculino') return 'Hombres'
+  return 'General'
+}
+
+function matchesSexoOption(sexo: string, selectedSex: string) {
+  if (!selectedSex) return true
+  if (sexo === 'Ambos') return true
+  return sexo === selectedSex
+}
+
+function getDisplayPrice(item: Pick<SubservicioDto, 'precio'> | Pick<VarianteDto, 'precio'>) {
+  return item.precio ?? 0
+}
+
+function getDisplayDuration(item: Pick<SubservicioDto, 'duracionMin'> | Pick<VarianteDto, 'duracionMin'>) {
+  return item.duracionMin ?? 0
+}
+
+function parsePackItems(detail?: string) {
+  if (!detail) return []
+  return detail
+    .split('+')
+    .map((item) => item.replace(/\(.*?\)/g, '').trim())
+    .filter(Boolean)
+}
+
+function buildServiceDescription(subservicios: SubservicioDto[], selectedSex: string) {
+  const labels = subservicios
+    .filter((subservicio) => subservicio.activo && matchesSexoOption(subservicio.sexo, selectedSex))
+    .flatMap((subservicio) => {
+      const variants = subservicio.variantes.filter((variant) => variant.activo && matchesSexoOption(variant.sexo, selectedSex))
+      return variants.length > 0 ? variants.map((variant) => variant.nombre) : [subservicio.nombre]
+    })
+    .slice(0, 5)
+
+  return labels.join(' · ')
+}
+
+function toLocalDateIso(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function startOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1)
+}
+
+function formatMonthLabel(date: Date) {
+  return new Intl.DateTimeFormat('es-AR', {
+    month: 'long',
+    year: 'numeric',
+  }).format(date)
+}
+
+function capitalize(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
+function formatShortDayLabel(date: Date) {
+  const weekday = capitalize(
+    new Intl.DateTimeFormat('es-AR', {
+      weekday: 'short',
+    })
+      .format(date)
+      .replace('.', ''),
+  )
+
+  return `${weekday} ${date.getDate()}`
+}
+
+function formatLongDayLabel(date: Date) {
+  const parts = new Intl.DateTimeFormat('es-AR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).formatToParts(date)
+
+  const weekday = capitalize(parts.find((part) => part.type === 'weekday')?.value ?? '')
+  const day = parts.find((part) => part.type === 'day')?.value ?? ''
+  const month = parts.find((part) => part.type === 'month')?.value ?? ''
+
+  return `${weekday} ${day} de ${month}`
+}
+
+function sortTimes(times: string[]) {
+  return [...times].sort((a, b) => a.localeCompare(b))
+}
+
+function calculateDiscountValue(
+  discount: { tipo: string; valor: number } | null,
+  baseAmount: number,
+) {
+  if (!discount || baseAmount <= 0) return 0
+  if (discount.tipo === 'MontoFijo') return Math.min(discount.valor, baseAmount)
+  return Math.round((baseAmount * discount.valor) / 100)
 }
 
 function formatCurrency(value: number) {
@@ -419,6 +364,8 @@ function StepFrame({
     const node = bodyRef.current
     if (!node) return
 
+    node.scrollTo({ top: 0, behavior: 'auto' })
+
     const updateState = () => {
       const overflow = node.scrollHeight - node.clientHeight > 12
       const currentScroll = node.scrollTop
@@ -477,22 +424,63 @@ function StepFrame({
 export default function ReservaTurnoPage() {
   const navigate = useNavigate()
   const usuario = useAuthStore((s) => s.usuario)
-  const showCouponLibrary = true
+  const showCouponLibrary = !!usuario
   const serviceSectionRef = useRef<HTMLDivElement | null>(null)
+  const today = new Date()
   const [step, setStep] = useState<WizardStep>(0)
   const [selectedSalon, setSelectedSalon] = useState<SelectedSalonId>(null)
-  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null)
-  const [selectedComboId, setSelectedComboId] = useState<string | null>(null)
+  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null)
+  const [selectedComboId, setSelectedComboId] = useState<number | null>(null)
   const [selectedZoneIds, setSelectedZoneIds] = useState<string[]>([])
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
-  const [selectedCouponId, setSelectedCouponId] = useState<string | null>(usuario ? 'laser20' : null)
-  const [couponCode, setCouponCode] = useState(usuario ? '' : 'LASER20')
+  const [selectedCouponId, setSelectedCouponId] = useState<number | null>(null)
+  const [couponCode, setCouponCode] = useState('')
   const [summaryOpen, setSummaryOpen] = useState(false)
   const [selectionMode, setSelectionMode] = useState<'combos' | 'zonas'>('zonas')
   const [guestData, setGuestData] = useState<GuestData>(DEFAULT_GUEST)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [headerHidden, setHeaderHidden] = useState(false)
+  const [servicios, setServicios] = useState<ServicioDto[]>([])
+  const [catalogLoading, setCatalogLoading] = useState(true)
+  const [catalogError, setCatalogError] = useState<string | null>(null)
+  const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(today))
+  const [availabilityDays, setAvailabilityDays] = useState<DayAvailability[]>([])
+  const [availabilityLoading, setAvailabilityLoading] = useState(false)
+  const [availabilityError, setAvailabilityError] = useState<string | null>(null)
+  const [availableCoupons, setAvailableCoupons] = useState<CuponDto[]>([])
+  const [couponsLoading, setCouponsLoading] = useState(false)
+  const [couponError, setCouponError] = useState<string | null>(null)
+  const [appliedDiscountCode, setAppliedDiscountCode] = useState<CodigoDescuentoDto | null>(null)
+  const [validatingCode, setValidatingCode] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [createdTurno, setCreatedTurno] = useState<TurnoDto | null>(null)
+  const [createdSesion, setCreatedSesion] = useState<SesionDto | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    ;(async () => {
+      try {
+        setCatalogLoading(true)
+        setCatalogError(null)
+        const response = await serviciosApi.getServicios()
+        if (cancelled) return
+        setServicios(response.filter((servicio) => servicio.activo))
+      } catch {
+        if (cancelled) return
+        setCatalogError('No pudimos cargar el catálogo de servicios. Probá de nuevo en unos instantes.')
+      } finally {
+        if (!cancelled) {
+          setCatalogLoading(false)
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (usuario) {
@@ -507,6 +495,119 @@ export default function ReservaTurnoPage() {
   }, [usuario])
 
   const selectedSex = guestData.sexo
+
+  const allServices = servicios
+    .map((servicio) => {
+      const salonId = mapSalonId(servicio.salon)
+      if (!salonId) return null
+
+      const visibleSubservicios = servicio.subservicios.filter((subservicio) => {
+        if (!subservicio.activo) return false
+        if (!matchesSexoOption(subservicio.sexo, selectedSex)) return false
+
+        if (subservicio.variantes.length === 0) return true
+
+        return subservicio.variantes.some((variant) => variant.activo && matchesSexoOption(variant.sexo, selectedSex))
+      })
+
+      if (visibleSubservicios.length === 0) return null
+
+      return {
+        id: servicio.id,
+        salonId,
+        nombre: servicio.nombre,
+        descripcion: buildServiceDescription(servicio.subservicios, selectedSex),
+        subservicios: visibleSubservicios,
+        iconKey: normalizeTextKey(servicio.nombre),
+      } satisfies ServiceOption
+    })
+    .filter((servicio): servicio is ServiceOption => servicio !== null)
+
+  const filteredSalones = (['salon1', 'salon2'] as const)
+    .map((salonId) => {
+      const serviciosEnSalon = allServices.filter((service) => service.salonId === salonId)
+      if (serviciosEnSalon.length === 0) return null
+
+      return {
+        id: salonId,
+        nombre: salonId === 'salon1' ? 'Salón 1' : 'Salón 2',
+        titulo: salonId === 'salon1' ? 'Estética & bienestar' : 'Peluquería',
+        descripcion: serviciosEnSalon.map((service) => service.nombre).join(' · '),
+        servicios: serviciosEnSalon.map((service) => service.nombre),
+      } satisfies SalonOption
+    })
+    .filter((salon): salon is SalonOption => salon !== null)
+
+  const availableServices = selectedSalon ? allServices.filter((service) => service.salonId === selectedSalon) : []
+  const selectedService = allServices.find((service) => service.id === selectedServiceId) ?? null
+
+  const selectionOptions = selectedService
+    ? selectedService.subservicios.reduce(
+        (acc, subservicio) => {
+          const activeVariants = subservicio.variantes.filter((variant) => variant.activo && matchesSexoOption(variant.sexo, selectedSex))
+
+          if (activeVariants.length > 0) {
+            activeVariants.forEach((variant) => {
+              const optionName = `${subservicio.nombre} · ${variant.nombre}`
+              const baseOption = {
+                nombre: optionName,
+                precio: getDisplayPrice(variant),
+                duracionMin: getDisplayDuration(variant),
+                grupo: mapGrupoFromSexo(variant.sexo),
+                subservicioId: subservicio.id,
+                varianteId: variant.id,
+              }
+
+              if (subservicio.esPack) {
+                acc.combos.push({
+                  id: variant.id,
+                  nombre: optionName,
+                  detalle: subservicio.detallePack ?? subservicio.descripcion ?? 'Pack especial',
+                  precio: baseOption.precio,
+                  duracionMin: baseOption.duracionMin,
+                  items: parsePackItems(subservicio.detallePack ?? subservicio.descripcion),
+                  subservicioId: subservicio.id,
+                  varianteId: variant.id,
+                })
+              } else {
+                acc.zones.push({
+                  id: `${subservicio.id}:${variant.id}`,
+                  ...baseOption,
+                })
+              }
+            })
+          } else {
+            const baseOption = {
+              nombre: subservicio.nombre,
+              precio: getDisplayPrice(subservicio),
+              duracionMin: getDisplayDuration(subservicio),
+              grupo: mapGrupoFromSexo(subservicio.sexo),
+              subservicioId: subservicio.id,
+            }
+
+            if (subservicio.esPack) {
+              acc.combos.push({
+                id: subservicio.id,
+                nombre: subservicio.nombre,
+                detalle: subservicio.detallePack ?? subservicio.descripcion ?? 'Pack especial',
+                precio: baseOption.precio,
+                duracionMin: baseOption.duracionMin,
+                items: parsePackItems(subservicio.detallePack ?? subservicio.descripcion),
+                subservicioId: subservicio.id,
+              })
+            } else {
+              acc.zones.push({
+                id: `${subservicio.id}:0`,
+                ...baseOption,
+              })
+            }
+          }
+
+          return acc
+        },
+        { combos: [] as ComboOption[], zones: [] as ZoneOption[] },
+      )
+    : { combos: [] as ComboOption[], zones: [] as ZoneOption[] }
 
   useEffect(() => {
     if (selectedSex === 'Masculino' && selectedSalon === 'salon2') {
@@ -555,16 +656,86 @@ export default function ReservaTurnoPage() {
     }
   }, [step])
 
-  const filteredSalones = SALONES.filter((salon) => !(selectedSex === 'Masculino' && salon.id === 'salon2'))
-  const availableServices = selectedSalon
-    ? SERVICIOS.filter((service) => service.salonId === selectedSalon)
-    : []
-  const selectedService = SERVICIOS.find((service) => service.id === selectedServiceId) ?? SERVICIOS[0]
-  const selectedCombo = LASER_COMBOS.find((combo) => combo.id === selectedComboId) ?? null
-  const selectedZones = LASER_ZONES.filter((zone) => selectedZoneIds.includes(zone.id))
-  const selectedDay = AVAILABILITY.find((day) => day.id === selectedDayId) ?? AVAILABILITY[1]
-  const selectedCoupon = COUPONS_AUTH.find((coupon) => coupon.id === selectedCouponId) ?? null
-  const manualCouponApplied = !selectedCoupon && couponCode.trim().toUpperCase() === 'LASER20'
+  useEffect(() => {
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'auto' })
+    })
+  }, [step])
+
+  useEffect(() => {
+    setSelectedCouponId(null)
+    setAppliedDiscountCode(null)
+    setCouponCode('')
+    setCouponError(null)
+  }, [selectedServiceId, selectedComboId, selectedZoneIds])
+
+  useEffect(() => {
+    if (step !== 4 || !usuario) return
+
+    let cancelled = false
+
+    ;(async () => {
+      try {
+        setCouponsLoading(true)
+        setCouponError(null)
+        const data = await cuponesApi.getDisponibles()
+        if (cancelled) return
+        setAvailableCoupons(data)
+      } catch (error) {
+        if (cancelled) return
+        setAvailableCoupons([])
+        setCouponError(getErrorMessage(error))
+      } finally {
+        if (!cancelled) {
+          setCouponsLoading(false)
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [step, usuario])
+
+  useEffect(() => {
+    if (selectedSalon && !filteredSalones.some((salon) => salon.id === selectedSalon)) {
+      setSelectedSalon(null)
+      setSelectedServiceId(null)
+      setSelectedComboId(null)
+      setSelectedZoneIds([])
+    }
+  }, [filteredSalones, selectedSalon])
+
+  useEffect(() => {
+    if (selectedServiceId && !allServices.some((service) => service.id === selectedServiceId)) {
+      setSelectedServiceId(null)
+      setSelectedComboId(null)
+      setSelectedZoneIds([])
+    }
+  }, [allServices, selectedServiceId])
+
+  const selectionComboIdsKey = selectionOptions.combos.map((combo) => combo.id).join('|')
+  const selectionZoneIdsKey = selectionOptions.zones.map((zone) => zone.id).join('|')
+
+  useEffect(() => {
+    if (selectedComboId && !selectionOptions.combos.some((combo) => combo.id === selectedComboId)) {
+      setSelectedComboId(null)
+    }
+
+    setSelectedZoneIds((current) => {
+      const next = current.filter((zoneId) => selectionOptions.zones.some((zone) => zone.id === zoneId))
+      return next.length === current.length ? current : next
+    })
+  }, [selectedComboId, selectionComboIdsKey, selectionZoneIdsKey])
+
+  const selectedCombo = selectionOptions.combos.find((combo) => combo.id === selectedComboId) ?? null
+  const selectedZones = selectionOptions.zones.filter((zone) => selectedZoneIds.includes(zone.id))
+  const selectedDay = availabilityDays.find((day) => day.id === selectedDayId) ?? null
+  const confirmedDay = selectedDay ?? availabilityDays[0] ?? null
+  const selectedCoupon = availableCoupons.find((coupon) => coupon.id === selectedCouponId) ?? null
+  const selectedSalonEnum = selectedSalon === 'salon1' ? 'Salon1' : selectedSalon === 'salon2' ? 'Salon2' : null
+  const singleSelection = selectedCombo ?? (selectedZones.length === 1 ? selectedZones[0] : null)
+  const isSessionSelection = !selectedCombo && selectedZones.length > 1
 
   const subtotal = selectedCombo
     ? selectedCombo.precio
@@ -574,18 +745,115 @@ export default function ReservaTurnoPage() {
     ? selectedCombo.duracionMin
     : selectedZones.reduce((acc, zone) => acc + zone.duracionMin, 0)
 
-  const automaticDiscountPct = !selectedCombo && selectedZones.length >= 3 ? 15 : 0
+  const automaticDiscountPct =
+    !selectedCombo && selectedZones.length >= 3
+      ? selectedService?.nombre === 'Depilación Descartable'
+        ? 10
+        : selectedService?.nombre === 'Depilación Láser'
+          ? 15
+          : 0
+      : 0
   const automaticDiscountValue = Math.round((subtotal * automaticDiscountPct) / 100)
-  const couponDiscountPct = selectedCoupon?.valor ?? (manualCouponApplied ? 20 : 0)
-  const couponDiscountValue = Math.round(((subtotal - automaticDiscountValue) * couponDiscountPct) / 100)
+  const baseAfterAutomaticDiscount = Math.max(subtotal - automaticDiscountValue, 0)
+  const couponDiscountValue = calculateDiscountValue(
+    selectedCoupon
+      ? { tipo: selectedCoupon.tipoDescuento, valor: selectedCoupon.valor }
+      : appliedDiscountCode
+        ? { tipo: appliedDiscountCode.tipoDescuento, valor: appliedDiscountCode.valor }
+        : null,
+    baseAfterAutomaticDiscount,
+  )
   const total = Math.max(subtotal - automaticDiscountValue - couponDiscountValue, 0)
   const summaryItems = selectedCombo
     ? selectedCombo.items
     : selectedZones.map((zone) => zone.nombre)
-  const successWeekday = selectedDay.fechaLarga.split(' ')[0]
-  const successDateRest = selectedDay.fechaLarga.split(' ').slice(1).join(' ')
+  const createdTotal =
+    createdTurno?.precioFinal ??
+    createdTurno?.precioBase ??
+    (createdSesion
+      ? createdSesion.turnos.reduce((acc, turno) => acc + (turno.precioFinal ?? turno.precioBase), 0)
+      : total)
+  const successWeekday = confirmedDay?.fechaLarga.split(' ')[0] ?? 'Próximamente'
+  const successDateRest = confirmedDay?.fechaLarga.split(' ').slice(1).join(' ') ?? ''
   const successChannels = guestData.email.trim().length > 0 ? 'WhatsApp y email' : 'WhatsApp'
-  const successTimelineTime = `${selectedDay.etiqueta.toUpperCase()} · ${selectedTime} HS`
+  const successTimelineTime = confirmedDay && selectedTime ? `${confirmedDay.etiqueta.toUpperCase()} · ${selectedTime} HS` : 'Horario a confirmar'
+
+  useEffect(() => {
+    if (step < 3 || !selectedService || !selectedSalonEnum || (!singleSelection && !isSessionSelection)) {
+      return
+    }
+
+    let cancelled = false
+
+    const loadAvailability = async () => {
+      try {
+        setAvailabilityLoading(true)
+        setAvailabilityError(null)
+
+        const monthStart = startOfMonth(calendarMonth)
+        const daysInMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0).getDate()
+        const requests = Array.from({ length: daysInMonth }, (_, index) => {
+          const dayDate = new Date(monthStart.getFullYear(), monthStart.getMonth(), index + 1)
+          const fecha = toLocalDateIso(dayDate)
+
+          return (async () => {
+            let response: DisponibilidadDto
+
+            if (isSessionSelection) {
+              response = await sesionesApi.getDisponibilidad({
+                salon: selectedSalonEnum,
+                fecha,
+                zonas: selectedZones.map((zone) => ({
+                  subservicioId: zone.subservicioId,
+                  varianteId: zone.varianteId,
+                })),
+              })
+            } else if (singleSelection) {
+              response = await turnosApi.getDisponibilidad({
+                fecha,
+                subservicioId: singleSelection.subservicioId,
+                varianteId: singleSelection.varianteId,
+                duracionMin: singleSelection.duracionMin,
+              })
+            } else {
+              response = { disponible: false, slotsOcupados: [], horariosDisponibles: [] }
+            }
+
+            return {
+              id: fecha,
+              fechaIso: fecha,
+              etiqueta: formatShortDayLabel(dayDate),
+              fechaLarga: formatLongDayLabel(dayDate),
+              slots: sortTimes(response.horariosDisponibles).map((hora) => ({ hora })),
+            } satisfies DayAvailability
+          })()
+        })
+
+        const monthDays = await Promise.all(requests)
+        if (cancelled) return
+
+        setAvailabilityDays(monthDays)
+        setSelectedDayId((current) => (current && monthDays.some((day) => day.id === current) ? current : null))
+        setSelectedTime(null)
+      } catch (error) {
+        if (cancelled) return
+        setAvailabilityDays([])
+        setSelectedDayId(null)
+        setSelectedTime(null)
+        setAvailabilityError(getErrorMessage(error))
+      } finally {
+        if (!cancelled) {
+          setAvailabilityLoading(false)
+        }
+      }
+    }
+
+    void loadAvailability()
+
+    return () => {
+      cancelled = true
+    }
+  }, [calendarMonth, step, selectedSalonEnum, selectedService, singleSelection, isSessionSelection, selectedZones])
 
   const progressValue = (Math.min(step, 5) / 5) * 100
   const canProceed =
@@ -635,11 +903,61 @@ export default function ReservaTurnoPage() {
   function goNext() {
     if (!canProceed) return
     if (step === 5) {
+      if (!selectedService || !confirmedDay || !selectedTime || !selectedSalonEnum) return
+
+      setSubmitError(null)
       setIsSubmitting(true)
-      window.setTimeout(() => {
-        setIsSubmitting(false)
-        setStep(6)
-      }, 900)
+
+      const fechaHoraInicio = `${confirmedDay.fechaIso}T${selectedTime}:00`
+      const bookingBase = usuario
+        ? { clienteId: usuario.id }
+        : {
+            nombreAnonimo: `${guestData.nombre} ${guestData.apellido}`.trim(),
+            telefonoAnonimo: guestData.telefono.trim(),
+          }
+
+      const discountBase = selectedCouponId
+        ? { cuponId: selectedCouponId }
+        : appliedDiscountCode
+          ? { codigoDescuento: appliedDiscountCode.codigo }
+          : {}
+
+      const runSubmit = async () => {
+        try {
+          if (isSessionSelection) {
+            const sesion = await sesionesApi.crearSesion({
+              ...bookingBase,
+              ...discountBase,
+              salon: selectedSalonEnum,
+              fechaHoraInicio,
+              zonas: selectedZones.map((zone) => ({
+                subservicioId: zone.subservicioId,
+                varianteId: zone.varianteId,
+              })),
+            })
+            setCreatedSesion(sesion)
+            setCreatedTurno(null)
+          } else if (singleSelection) {
+            const turno = await turnosApi.crearTurno({
+              ...bookingBase,
+              ...discountBase,
+              subservicioId: singleSelection.subservicioId,
+              varianteId: singleSelection.varianteId,
+              fechaHoraInicio,
+            })
+            setCreatedTurno(turno)
+            setCreatedSesion(null)
+          }
+
+          setStep(6)
+        } catch (error) {
+          setSubmitError(getErrorMessage(error))
+        } finally {
+          setIsSubmitting(false)
+        }
+      }
+
+      void runSubmit()
       return
     }
 
@@ -647,6 +965,11 @@ export default function ReservaTurnoPage() {
   }
 
   function goBack() {
+    if (step === 0) {
+      navigate('/', { replace: false })
+      return
+    }
+
     if (step === 6) {
       setStep(5)
       return
@@ -656,7 +979,7 @@ export default function ReservaTurnoPage() {
     setStep((current) => Math.max(current - 1, 0) as WizardStep)
   }
 
-  function handleServiceSelect(serviceId: string) {
+  function handleServiceSelect(serviceId: number) {
     setSelectedServiceId(serviceId)
     setSelectedComboId(null)
     setSelectedZoneIds([])
@@ -684,7 +1007,7 @@ export default function ReservaTurnoPage() {
     )
   }
 
-  function selectCombo(comboId: string) {
+  function selectCombo(comboId: number) {
     setSelectedComboId((current) => {
       const nextValue = current === comboId ? null : comboId
       if (nextValue) {
@@ -694,17 +1017,31 @@ export default function ReservaTurnoPage() {
     })
   }
 
-  function handleCouponApply(code: string) {
+  async function handleCouponApply(code: string) {
     const normalized = code.trim().toUpperCase()
-    if (normalized === 'BIENVENIDA10') {
-      setSelectedCouponId('bienvenida10')
+    if (!normalized) {
+      setCouponError('Ingresá un código para validar la promoción.')
       return
     }
-    if (normalized === 'LASER20') {
-      setSelectedCouponId('laser20')
-      return
+
+    try {
+      setValidatingCode(true)
+      setCouponError(null)
+      const codigo = await codigosDescuentoApi.validar(normalized, {
+        servicioId: selectedService?.id,
+        subservicioId: singleSelection?.subservicioId,
+        varianteId: singleSelection?.varianteId,
+      })
+
+      setAppliedDiscountCode(codigo)
+      setSelectedCouponId(null)
+      setCouponCode(codigo.codigo)
+    } catch (error) {
+      setAppliedDiscountCode(null)
+      setCouponError(getErrorMessage(error))
+    } finally {
+      setValidatingCode(false)
     }
-    setSelectedCouponId(null)
   }
 
   function updateGuestField(field: keyof GuestData, value: string) {
@@ -720,7 +1057,15 @@ export default function ReservaTurnoPage() {
     setSelectedDayId(null)
     setSelectedTime(null)
     setSelectedCouponId(null)
+    setAppliedDiscountCode(null)
     setCouponCode('')
+    setAvailabilityDays([])
+    setAvailableCoupons([])
+    setAvailabilityError(null)
+    setCouponError(null)
+    setSubmitError(null)
+    setCreatedTurno(null)
+    setCreatedSesion(null)
     setSummaryOpen(false)
     setSelectionMode('zonas')
     setIsSubmitting(false)
@@ -792,6 +1137,8 @@ export default function ReservaTurnoPage() {
           title="¿Qué servicio buscás?"
           subtitle="Empezá por elegir el salón y después el tipo de experiencia que querés reservar."
         >
+          {catalogError ? <div className="wizard-inline-error">{catalogError}</div> : null}
+
           <div className="salon-grid">
             {filteredSalones.map((salon) => (
               <button
@@ -817,7 +1164,9 @@ export default function ReservaTurnoPage() {
             ))}
           </div>
 
-          {selectedSalon ? (
+          {catalogLoading ? <div className="wizard-inline-loading">Cargando catálogo de servicios...</div> : null}
+
+          {selectedSalon && !catalogLoading ? (
             <div ref={serviceSectionRef} className="service-section">
               <div className="section-heading">
                 <div>
@@ -835,7 +1184,7 @@ export default function ReservaTurnoPage() {
                     className={`service-card ${selectedServiceId === service.id ? 'selected' : ''}`}
                   >
                     {(() => {
-                      const ServiceIcon = getServiceIcon(service.id)
+                      const ServiceIcon = getServiceIcon(service.iconKey)
                       return (
                         <span className="service-icon-wrap">
                           <span className="service-icon">
@@ -861,18 +1210,14 @@ export default function ReservaTurnoPage() {
     }
 
     if (step === 2) {
-      const visibleCombos = selectedSex === 'Femenino' ? LASER_COMBOS : []
-      const visibleZones = LASER_ZONES.filter((zone) =>
-        selectedSex === 'Femenino'
-          ? zone.grupo === 'Mujeres' || zone.grupo === 'General'
-          : zone.grupo === 'Hombres' || zone.grupo === 'General',
-      )
+      const visibleCombos = selectionOptions.combos
+      const visibleZones = selectionOptions.zones
 
       return (
         <StepFrame
           kicker="Paso 3"
-          title="Seleccioná tus zonas"
-          subtitle="Elegí un combo o armá la sesión con las zonas que quieras."
+          title={selectedService ? `Seleccioná en ${selectedService.nombre}` : 'Seleccioná tus zonas'}
+          subtitle="Elegí un combo o armá la sesión con las opciones que quieras."
         >
           {visibleCombos.length > 0 ? (
             <div className="mobile-switcher">
@@ -942,8 +1287,8 @@ export default function ReservaTurnoPage() {
             <div className={`selection-column ${selectionMode === 'combos' ? 'mobile-hidden' : ''}`}>
               <div className="column-header">
                 <div>
-                  <span className="section-label">Zonas individuales</span>
-                  <h2>Armá tu sesión</h2>
+                  <span className="section-label">Opciones individuales</span>
+                  <h2>Armá tu selección</h2>
                 </div>
               </div>
 
@@ -995,8 +1340,40 @@ export default function ReservaTurnoPage() {
     }
 
     if (step === 3) {
-      const availableDays = AVAILABILITY.filter((day) => day.slots.some((slot) => slot.disponible))
-      const visibleSlots = selectedDayId ? selectedDay.slots.filter((slot) => slot.disponible) : []
+      const availableDays = availabilityDays.filter((day) => day.slots.length > 0)
+      const availableDayMap = new Map(availableDays.map((day) => [day.etiqueta.split(' ')[1], day]))
+      const firstDayJs = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1).getDay()
+      const leadingBlanks = firstDayJs === 0 ? 6 : firstDayJs - 1
+      const calendarDaysInMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate()
+      const monthLabel = capitalize(formatMonthLabel(calendarMonth))
+      const monthNameGen = new Intl.DateTimeFormat('es-AR', { month: 'long' }).format(calendarMonth)
+      const calendarCells = [
+        ...Array.from({ length: leadingBlanks }, (_, index) => ({
+          key: `blank-${index}`,
+          type: 'blank' as const,
+        })),
+        ...Array.from({ length: calendarDaysInMonth }, (_, index) => {
+          const dayNumber = String(index + 1)
+          const linkedDay = availableDayMap.get(dayNumber) ?? null
+          const currentCellDate = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), index + 1)
+          const todayAtMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+          const isPast = currentCellDate < todayAtMidnight
+
+          return {
+            key: `day-${dayNumber}`,
+            type: 'day' as const,
+            dayNumber,
+            linkedDay,
+            isPast,
+          }
+        }),
+      ]
+      const groupedSlots = selectedDay
+        ? TIME_GROUPS.map((group) => ({
+            label: group.label,
+            slots: selectedDay.slots.filter((slot) => group.filter(slot.hora)),
+          })).filter((group) => group.slots.length > 0)
+        : []
 
       return (
         <StepFrame
@@ -1004,88 +1381,123 @@ export default function ReservaTurnoPage() {
           title="Elegí fecha y horario"
           subtitle="Simulamos disponibilidad en bloques de 30 minutos para que el solapamiento sea más eficiente."
         >
-          <div className="week-nav">
-            <button type="button">
-              <ChevronLeft size={18} />
-              Semana anterior
-            </button>
-            <strong>19 - 24 de mayo 2026</strong>
-            <button type="button">
-              Semana siguiente
-              <ChevronRight size={18} />
-            </button>
-          </div>
-
-          <div className="desktop-schedule">
-            <div className="day-card-row">
-              {availableDays.map((day) => (
+          <div className="schedule-picker">
+            <div className="schedule-picker-left">
+              <div className="schedule-nav">
                 <button
-                  key={day.id}
                   type="button"
-                  className={`day-card ${selectedDayId === day.id ? 'selected' : ''}`}
+                  className="schedule-nav-btn"
+                  aria-label="Mes anterior"
                   onClick={() => {
-                    setSelectedDayId(day.id)
+                    setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))
+                    setSelectedDayId(null)
                     setSelectedTime(null)
                   }}
                 >
-                  <span>{day.etiqueta}</span>
-                  <strong>{day.fechaLarga.replace(' de mayo', '')}</strong>
+                  <ChevronLeft size={16} />
                 </button>
-              ))}
-            </div>
-
-            {selectedDayId ? (
-              <div className="selected-day-panel">
-                <div className="selected-day-copy">
-                  <span className="section-label">Disponibilidad</span>
-                  <h2>{selectedDay.fechaLarga}</h2>
-                </div>
-
-                <div className="slot-grid">
-                  {visibleSlots.map((slot) => (
-                    <button
-                      key={slot.hora}
-                      type="button"
-                      className={`slot-chip available ${selectedTime === slot.hora ? 'selected' : ''}`}
-                      onClick={() => setSelectedTime(slot.hora)}
-                    >
-                      {slot.hora}
-                    </button>
-                  ))}
-                </div>
+                <strong>{monthLabel}</strong>
+                <button
+                  type="button"
+                  className="schedule-nav-btn"
+                  aria-label="Mes siguiente"
+                  onClick={() => {
+                    setCalendarMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))
+                    setSelectedDayId(null)
+                    setSelectedTime(null)
+                  }}
+                >
+                  <ChevronRight size={16} />
+                </button>
               </div>
-            ) : null}
-          </div>
 
-          <div className="mobile-schedule">
-            <div className="mobile-day-tabs">
-              {availableDays.map((day) => (
-                <button
-                  key={day.id}
-                  type="button"
-                  className={selectedDayId === day.id ? 'active' : ''}
-                  onClick={() => {
-                    setSelectedDayId(day.id)
-                    setSelectedTime(null)
-                  }}
-                >
-                  {day.etiqueta}
-                </button>
-              ))}
+              <div className="schedule-weekdays">
+                {CALENDAR_WEEKDAYS.map((weekday) => (
+                  <span key={weekday}>{weekday}</span>
+                ))}
+              </div>
+
+              <div className="schedule-calendar-grid">
+                {calendarCells.map((cell) => {
+                  if (cell.type === 'blank') {
+                    return <div key={cell.key} className="schedule-calendar-day blank" />
+                  }
+
+                  const isSelected = cell.linkedDay ? selectedDayId === cell.linkedDay.id : false
+                  const isAvailable = !!cell.linkedDay
+
+                  return (
+                    <button
+                      key={cell.key}
+                      type="button"
+                      disabled={!isAvailable}
+                      className={`schedule-calendar-day ${isSelected ? 'selected' : ''} ${isAvailable ? 'available' : ''} ${cell.isPast ? 'past' : 'disabled'}`}
+                      onClick={() => {
+                        if (!cell.linkedDay) return
+                        setSelectedDayId(cell.linkedDay.id)
+                        setSelectedTime(null)
+                      }}
+                    >
+                      <span className="schedule-calendar-day-num">{cell.dayNumber}</span>
+                      {isAvailable ? <span className="schedule-calendar-dot" /> : null}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="schedule-legend">
+                <span className="schedule-calendar-dot" />
+                <small>Días con horarios disponibles</small>
+              </div>
+
+              {availabilityLoading ? <p className="wizard-inline-loading">Consultando disponibilidad real del mes...</p> : null}
+              {availabilityError ? <p className="wizard-inline-error">{availabilityError}</p> : null}
             </div>
 
-            <div className="mobile-slot-list">
-              {visibleSlots.map((slot) => (
-                <button
-                  key={`${selectedDay.id}-${slot.hora}`}
-                  type="button"
-                  className={`mobile-slot ${selectedTime === slot.hora ? 'selected' : ''}`}
-                  onClick={() => setSelectedTime(slot.hora)}
-                >
-                  <span>{slot.hora}</span>
-                  <small>Disponible</small>
-                </button>
-              ))}
+            <div className="schedule-picker-right">
+              {availabilityLoading ? (
+                <div className="schedule-placeholder">
+                  <Clock3 size={42} strokeWidth={1.3} />
+                  <p>Consultando horarios disponibles...</p>
+                </div>
+              ) : !selectedDay ? (
+                <div className="schedule-placeholder">
+                  <Clock3 size={42} strokeWidth={1.3} />
+                  <p>
+                    Seleccioná un día
+                    <br />
+                    para ver los horarios disponibles
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <h2 className="schedule-day-title">
+                    {selectedDay.fechaLarga.split(' ')[0]} {selectedDay.etiqueta.split(' ')[1]} de {monthNameGen}
+                  </h2>
+
+                  {groupedSlots.length > 0 ? (
+                    groupedSlots.map((group) => (
+                      <div key={group.label} className="schedule-time-group">
+                        <div className="schedule-time-group-label">{group.label}</div>
+                        <div className="schedule-time-chips">
+                          {group.slots.map((slot) => (
+                            <button
+                              key={`${selectedDay.id}-${slot.hora}`}
+                              type="button"
+                              className={`schedule-time-chip ${selectedTime === slot.hora ? 'selected' : ''}`}
+                              onClick={() => setSelectedTime(slot.hora)}
+                            >
+                              {slot.hora}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="schedule-empty">Sin disponibilidad este día</p>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </StepFrame>
@@ -1100,7 +1512,7 @@ export default function ReservaTurnoPage() {
           subtitle="Elegí un cupón disponible o ingresá un código manualmente."
         >
           {showCouponLibrary ? (
-            <div className="coupon-section">
+            <div className="coupon-section compact">
               <div className="section-heading">
                 <div>
                   <span className="section-label">Tus cupones disponibles</span>
@@ -1109,31 +1521,32 @@ export default function ReservaTurnoPage() {
               </div>
 
               <div className="coupon-grid">
-                {COUPONS_AUTH.map((coupon) => {
+                {availableCoupons.map((coupon) => {
                   const applied = selectedCouponId === coupon.id
                   return (
                     <article key={coupon.id} className={`coupon-card ${applied ? 'selected' : ''}`}>
                       <div className="coupon-ticket-value">
-                        <strong>{coupon.valor}%</strong>
-                        <span>OFF</span>
+                        <strong>{coupon.tipoDescuento === 'MontoFijo' ? formatCurrency(coupon.valor) : `${coupon.valor}%`}</strong>
+                        <span>{coupon.tipoDescuento === 'MontoFijo' ? 'AHORRO' : 'OFF'}</span>
                       </div>
                       <div className="coupon-ticket-body">
                         <div className="coupon-copy">
                           <div className="coupon-code-row">
                             <h3>{coupon.codigo}</h3>
                           </div>
-                          <p>{coupon.descripcion}</p>
+                          <p>{coupon.descripcion ?? 'Beneficio disponible para tu cuenta.'}</p>
                           <div className="coupon-tags">
-                            <small>{coupon.codigo === 'LASER20' ? 'Solo para depilación láser' : 'Válido para todos los servicios'}</small>
-                            <small>Vence {coupon.vence}</small>
+                            <small>{coupon.serviciosIds?.length ? 'Aplica a servicios específicos' : 'Válido en servicios habilitados'}</small>
+                            <small>Vence {new Date(coupon.fechaHasta).toLocaleDateString('es-AR')}</small>
                           </div>
                         </div>
                         <button
                           type="button"
                           className="coupon-apply-btn"
                           onClick={() => {
-                            setCouponCode(coupon.codigo)
                             setSelectedCouponId(coupon.id)
+                            setAppliedDiscountCode(null)
+                            setCouponCode('')
                           }}
                         >
                           {applied ? 'Aplicado' : 'Aplicar'}
@@ -1143,6 +1556,11 @@ export default function ReservaTurnoPage() {
                   )
                 })}
               </div>
+
+              {couponsLoading ? <p className="wizard-inline-loading">Cargando cupones disponibles...</p> : null}
+              {usuario && !couponsLoading && availableCoupons.length === 0 ? (
+                <p className="wizard-inline-loading">No tenés cupones personales disponibles en este momento.</p>
+              ) : null}
             </div>
           ) : null}
 
@@ -1155,13 +1573,22 @@ export default function ReservaTurnoPage() {
               <Input value={couponCode} onChange={(event) => setCouponCode(event.target.value)} placeholder="CÓDIGO DE CUPÓN" />
               <Button
                 variant="secondary"
-                onClick={() => handleCouponApply(couponCode)}
+                onClick={() => void handleCouponApply(couponCode)}
+                loading={validatingCode}
               >
                 Aplicar
               </Button>
             </div>
 
-            <p className="manual-coupon-help">Los códigos no son acumulables con otras promociones activas.</p>
+            {appliedDiscountCode ? (
+              <p className="manual-coupon-help">
+                Código aplicado: <strong>{appliedDiscountCode.codigo}</strong> · {appliedDiscountCode.nombre}
+              </p>
+            ) : (
+              <p className="manual-coupon-help">Los códigos no son acumulables con otras promociones activas.</p>
+            )}
+
+            {couponError ? <p className="wizard-inline-error">{couponError}</p> : null}
           </div>
         </StepFrame>
       )
@@ -1190,7 +1617,7 @@ export default function ReservaTurnoPage() {
                 <Scissors size={18} />
                 <div>
                   <span className="confirmation-label">Servicio</span>
-                  <strong>{selectedService.nombre}</strong>
+                  <strong>{selectedService?.nombre ?? 'Servicio a confirmar'}</strong>
                   <span className="confirmation-secondary">{summaryItems.join(' · ')}</span>
                 </div>
               </div>
@@ -1211,7 +1638,7 @@ export default function ReservaTurnoPage() {
                 <CalendarDays size={18} />
                 <div>
                   <span className="confirmation-label">Fecha y hora</span>
-                  <strong>{selectedDay.fechaLarga}, {selectedTime} hs</strong>
+                  <strong>{confirmedDay.fechaLarga}, {selectedTime} hs</strong>
                 </div>
               </div>
             </div>
@@ -1227,27 +1654,50 @@ export default function ReservaTurnoPage() {
             </div>
 
             <div className="confirmation-total">
-              <div><span>Subtotal</span><strong>{formatCurrency(subtotal)}</strong></div>
-              {automaticDiscountValue > 0 ? (
-                <div className="discount-line">
-                  <div className="discount-copy">
-                    <span>Descuento {automaticDiscountPct}%</span>
-                    <small>Aplicado automáticamente por elegir 3 o más zonas.</small>
-                  </div>
-                  <strong>-{formatCurrency(automaticDiscountValue)}</strong>
+              <div className="confirmation-total-card">
+                <div className="confirmation-total-row">
+                  <span>Subtotal</span>
+                  <strong>{formatCurrency(subtotal)}</strong>
                 </div>
-              ) : null}
-              {couponDiscountValue > 0 ? (
-                <div className="discount-line">
-                  <div className="discount-copy">
-                    <span>{selectedCoupon ? `Cupón ${selectedCoupon.codigo}` : `Cupón ${couponDiscountPct}%`}</span>
-                    <small>{selectedCoupon ? `Promoción aplicada desde tu cupón ${selectedCoupon.codigo}.` : 'Promoción aplicada desde un cupón activo.'}</small>
+                {automaticDiscountValue > 0 || couponDiscountValue > 0 ? (
+                  <div className="confirmation-discounts">
+                    {automaticDiscountValue > 0 ? (
+                      <div className="discount-line">
+                        <div className="discount-copy">
+                          <span>Descuento {automaticDiscountPct}%</span>
+                          <small>Aplicado automáticamente por elegir 3 o más zonas.</small>
+                        </div>
+                        <strong>-{formatCurrency(automaticDiscountValue)}</strong>
+                      </div>
+                    ) : null}
+                    {couponDiscountValue > 0 ? (
+                      <div className="discount-line">
+                        <div className="discount-copy">
+                          <span>
+                            {selectedCoupon
+                              ? `Cupón ${selectedCoupon.codigo}`
+                              : appliedDiscountCode
+                                ? `Código ${appliedDiscountCode.codigo}`
+                                : 'Promoción aplicada'}
+                          </span>
+                          <small>
+                            {selectedCoupon
+                              ? `Promoción aplicada desde tu cupón ${selectedCoupon.codigo}.`
+                              : appliedDiscountCode
+                                ? `Promoción aplicada desde el código ${appliedDiscountCode.codigo}.`
+                                : 'Promoción aplicada a la reserva.'}
+                          </small>
+                        </div>
+                        <strong>-{formatCurrency(couponDiscountValue)}</strong>
+                      </div>
+                    ) : null}
                   </div>
-                  <strong>-{formatCurrency(couponDiscountValue)}</strong>
-                </div>
-              ) : null}
-              <div className="grand-total"><span>Total</span><strong>{formatCurrency(total)}</strong></div>
+                ) : null}
+                <div className="grand-total"><span>Total</span><strong>{formatCurrency(total)}</strong></div>
+              </div>
             </div>
+
+            {submitError ? <div className="wizard-inline-error">{submitError}</div> : null}
           </div>
 
           <div className="policy-card">
@@ -1293,7 +1743,7 @@ export default function ReservaTurnoPage() {
             <div className="success-detail-row">
               <span className="success-detail-ic"><Scissors size={16} /></span>
               <span className="success-detail-lab">Servicio</span>
-              <span className="success-detail-v">{selectedService.nombre}</span>
+              <span className="success-detail-v">{selectedService?.nombre ?? 'Servicio a confirmar'}</span>
             </div>
 
             <div className="success-detail-row">
@@ -1311,7 +1761,7 @@ export default function ReservaTurnoPage() {
             <div className="success-detail-row">
               <span className="success-detail-ic"><Clock3 size={16} /></span>
               <span className="success-detail-lab">Total</span>
-              <span className="success-detail-v">{formatCurrency(total)}</span>
+              <span className="success-detail-v">{formatCurrency(createdTotal)}</span>
             </div>
 
             <div className="success-inline-actions-area">
@@ -1391,7 +1841,7 @@ export default function ReservaTurnoPage() {
           <button type="button" className="success-btn-ghost" onClick={restartReservation}>
             Reservar otro turno
           </button>
-          <button type="button" className="success-btn-primary" onClick={() => navigate('/')}>
+          <button type="button" className="success-btn-primary" onClick={() => navigate(usuario ? '/mis-turnos' : '/')}>
             Ver mis turnos <span className="ar">→</span>
           </button>
         </div>
@@ -1439,8 +1889,8 @@ export default function ReservaTurnoPage() {
               {step < 6 ? (
                 <div className="wizard-footer">
                   <div className="footer-actions">
-                    <Button variant="ghost" size="lg" onClick={goBack} disabled={step === 0} leftIcon={<ArrowLeft size={16} />}>
-                      Anterior
+                    <Button variant="ghost" size="lg" onClick={goBack} leftIcon={<ArrowLeft size={16} />}>
+                      {step === 0 ? 'Volver al inicio' : 'Anterior'}
                     </Button>
                     <Button
                       variant="primary"
@@ -1471,24 +1921,28 @@ export default function ReservaTurnoPage() {
                     {summaryItems.map((item) => (
                       <div key={item} className="summary-item">
                         <span>{item}</span>
-                        <strong>{selectedCombo ? 'Incluido' : formatCurrency(LASER_ZONES.find((zone) => zone.nombre === item)?.precio ?? 0)}</strong>
+                        <strong>{selectedCombo ? 'Incluido' : formatCurrency(selectedZones.find((zone) => zone.nombre === item)?.precio ?? 0)}</strong>
                       </div>
                     ))}
                   </div>
 
                   <div className="summary-divider" />
 
-                  {automaticDiscountValue > 0 ? (
-                    <div className="summary-line discount">
-                      <span>Descuento {automaticDiscountPct}%</span>
-                      <strong>-{formatCurrency(automaticDiscountValue)}</strong>
-                    </div>
-                  ) : null}
+                  {automaticDiscountValue > 0 || couponDiscountValue > 0 ? (
+                    <div className="summary-discounts">
+                      {automaticDiscountValue > 0 ? (
+                        <div className="summary-line discount">
+                          <span>Descuento {automaticDiscountPct}%</span>
+                          <strong>-{formatCurrency(automaticDiscountValue)}</strong>
+                        </div>
+                      ) : null}
 
-                  {couponDiscountValue > 0 ? (
-                    <div className="summary-line discount">
-                      <span>{selectedCoupon ? `Cupón ${selectedCoupon.codigo}` : `Cupón ${couponDiscountPct}%`}</span>
-                      <strong>-{formatCurrency(couponDiscountValue)}</strong>
+                      {couponDiscountValue > 0 ? (
+                        <div className="summary-line discount">
+                          <span>{selectedCoupon ? `Cupón ${selectedCoupon.codigo}` : appliedDiscountCode ? `Código ${appliedDiscountCode.codigo}` : 'Promoción'}</span>
+                          <strong>-{formatCurrency(couponDiscountValue)}</strong>
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
 
@@ -1533,7 +1987,7 @@ export default function ReservaTurnoPage() {
                     {summaryItems.map((item) => (
                       <div key={item} className="summary-item">
                         <span>{item}</span>
-                        <strong>{selectedCombo ? 'Incluido' : formatCurrency(LASER_ZONES.find((zone) => zone.nombre === item)?.precio ?? 0)}</strong>
+                        <strong>{selectedCombo ? 'Incluido' : formatCurrency(selectedZones.find((zone) => zone.nombre === item)?.precio ?? 0)}</strong>
                       </div>
                     ))}
                   </div>
@@ -1967,6 +2421,10 @@ export default function ReservaTurnoPage() {
         .service-section,
         .coupon-section {
           margin-top: 24px;
+        }
+
+        .coupon-section.compact {
+          margin-top: 8px;
         }
 
         .section-heading,
@@ -2424,147 +2882,261 @@ export default function ReservaTurnoPage() {
           font-size: 14px;
         }
 
-        .week-nav {
+        .schedule-picker {
+          margin-top: 8px;
+          display: grid;
+          grid-template-columns: 252px minmax(0, 1fr);
+          gap: 28px;
+          align-items: start;
+        }
+
+        .schedule-picker-left {
+          padding: 10px 0 0;
+        }
+
+        .schedule-nav {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 16px;
-          margin-top: 16px;
-          padding: 16px 20px;
-          border-radius: 20px;
-          background: rgba(255,255,255,0.72);
-          border: 1px solid rgba(232,224,216,0.95);
+          margin-bottom: 16px;
+          gap: 10px;
         }
 
-        .week-nav button {
+        .schedule-nav strong {
+          font-family: var(--font-heading);
+          font-size: 15px;
+          font-weight: 500;
+          letter-spacing: -0.01em;
+          color: var(--color-text-primary);
+        }
+
+        .schedule-nav-btn {
+          width: 28px;
+          height: 28px;
+          border-radius: 7px;
+          background: var(--color-tertiary);
+          color: var(--color-primary);
           display: inline-flex;
           align-items: center;
-          gap: 8px;
-          border: none;
-          background: transparent;
-          color: var(--color-text-secondary);
-          font-family: var(--font-body);
+          justify-content: center;
+          border: 1.5px solid var(--color-neutral-light);
+          cursor: pointer;
+          transition: all 160ms ease;
+        }
+
+        .schedule-nav-btn:hover:not(:disabled) {
+          background: var(--color-secondary);
+          color: #fff;
+          border-color: var(--color-secondary);
+        }
+
+        .schedule-nav-btn:disabled {
+          opacity: 0.28;
+          cursor: default;
+        }
+
+        .schedule-weekdays {
+          display: grid;
+          grid-template-columns: repeat(6, 1fr);
+          margin-bottom: 4px;
+        }
+
+        .schedule-weekdays span {
+          text-align: center;
+          font-size: 9.5px;
           font-weight: 700;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: var(--color-text-muted);
+          padding: 2px 0 7px;
+        }
+
+        .schedule-calendar-grid {
+          display: grid;
+          grid-template-columns: repeat(6, 1fr);
+          gap: 2px;
+        }
+
+        .schedule-calendar-day {
+          aspect-ratio: 1;
+          border-radius: 7px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 3px;
+          border: none;
+          background: none;
+          padding: 2px;
+          color: var(--color-text-primary);
+          transition: background 160ms ease, color 160ms ease;
+        }
+
+        .schedule-calendar-day.blank {
+          pointer-events: none;
+        }
+
+        .schedule-calendar-day.available:hover {
+          background: rgba(197,160,89,0.12);
+        }
+
+        .schedule-calendar-day.selected {
+          background: var(--color-secondary);
+          color: #fff;
+        }
+
+        .schedule-calendar-day.past,
+        .schedule-calendar-day.disabled {
+          color: rgba(140,126,109,0.34);
+          cursor: default;
+        }
+
+        .schedule-calendar-day.selected .schedule-calendar-dot {
+          background: rgba(255,255,255,0.56);
+        }
+
+        .schedule-calendar-day-num {
+          font-size: 12.5px;
+          font-weight: 600;
+          line-height: 1;
+        }
+
+        .schedule-calendar-dot {
+          width: 4px;
+          height: 4px;
+          border-radius: 999px;
+          background: var(--color-secondary);
+          flex-shrink: 0;
+        }
+
+        .schedule-legend {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-top: 16px;
+          width: fit-content;
+          padding: 9px 12px;
+          border-radius: 999px;
+          background: rgba(197,160,89,0.11);
+          border: 1px solid rgba(197,160,89,0.22);
+          font-size: 11px;
+          color: var(--color-text-primary);
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+        }
+
+        .schedule-picker-right {
+          padding: 8px 0 0 28px;
+          min-height: 300px;
+          display: flex;
+          flex-direction: column;
+          border-left: 1px solid var(--color-neutral-light);
+        }
+
+        .schedule-picker button:not(:disabled),
+        .wizard-footer button:not(:disabled),
+        .summary-card button:not(:disabled),
+        .success-screen button:not(:disabled) {
           cursor: pointer;
         }
 
-        .week-nav strong {
-          font-family: var(--font-heading);
-          font-size: 24px;
-          color: var(--color-text-primary);
-        }
-
-        .desktop-schedule {
-          margin-top: 22px;
-        }
-
-        .day-card-row {
-          display: grid;
-          grid-template-columns: repeat(6, minmax(0, 1fr));
-          gap: 12px;
-        }
-
-        .day-card {
-          padding: 18px 14px;
-          border-radius: 20px;
-          background: rgba(255,255,255,0.82);
-          border: 1px solid rgba(232,224,216,0.95);
-          text-align: left;
-          transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
-        }
-
-        .day-card:hover {
-          border-color: rgba(197,160,89,0.48);
-          transform: translateY(-1px);
-        }
-
-        .day-card.selected {
-          border-color: rgba(197,160,89,0.7);
-          background: rgba(197,160,89,0.1);
-          box-shadow: 0 10px 24px rgba(74,55,40,0.08);
-        }
-
-        .day-card span,
-        .selected-day-copy h2 {
-          font-family: var(--font-body);
-          font-weight: 700;
-          color: var(--color-text-primary);
-        }
-
-        .day-card strong {
-          display: block;
-          margin-top: 8px;
-          font-family: var(--font-body);
-          font-size: 14px;
-          font-weight: 500;
-          color: var(--color-text-secondary);
-        }
-
-        .selected-day-panel {
-          margin-top: 18px;
-          padding: 24px;
-          border-radius: 22px;
-          background: rgba(255,255,255,0.72);
-          border: 1px solid rgba(232,224,216,0.95);
-        }
-
-        .selected-day-copy h2 {
-          margin: 10px 0 0;
-          font-family: var(--font-heading);
-          font-size: 30px;
-          font-weight: 400;
-        }
-
-        .slot-grid {
-          display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
+        .schedule-placeholder {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
           gap: 14px;
-          margin-top: 22px;
+          text-align: center;
+          color: var(--color-text-muted);
         }
 
-        .slot-chip,
-        .mobile-slot,
+        .schedule-placeholder p {
+          margin: 0;
+          font-size: 14px;
+          line-height: 1.65;
+        }
+
+        .schedule-calendar-day.available {
+          color: var(--color-text-primary);
+        }
+
+        .schedule-calendar-day.available .schedule-calendar-day-num {
+          font-weight: 700;
+        }
+
+        .schedule-day-title {
+          margin: 0 0 20px;
+          font-family: var(--font-heading);
+          font-size: 20px;
+          font-weight: 500;
+          letter-spacing: -0.01em;
+          color: var(--color-text-primary);
+        }
+
+        .schedule-time-group {
+          margin-bottom: 18px;
+        }
+
+        .schedule-time-group:last-child {
+          margin-bottom: 0;
+        }
+
+        .schedule-time-group-label {
+          margin-bottom: 9px;
+          font-size: 9.5px;
+          font-weight: 700;
+          letter-spacing: 0.2em;
+          text-transform: uppercase;
+          color: var(--color-text-muted);
+        }
+
+        .schedule-time-chips {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .schedule-time-chip,
         .sex-options button,
-        .mobile-day-tabs button,
         .mobile-switcher button {
-          border-radius: 16px;
-          border: 1px solid rgba(232,224,216,0.95);
-          background: #fffdfb;
+          border-radius: 9px;
+          border: 1.5px solid var(--color-neutral-light);
+          background: var(--color-tertiary);
           font-family: var(--font-body);
           transition: all 180ms ease;
         }
 
-        .slot-chip {
-          min-height: 58px;
-          padding: 0 8px;
-          color: var(--color-text-secondary);
+        .schedule-time-chip {
+          padding: 9px 16px;
+          font-size: 13.5px;
+          font-weight: 500;
+          font-variant-numeric: tabular-nums;
+          color: var(--color-primary);
         }
 
-        .slot-chip.available:hover,
-        .mobile-slot:hover,
+        .schedule-time-chip:hover:not(.selected),
         .sex-options button:hover,
-        .mobile-day-tabs button:hover,
         .mobile-switcher button:hover {
-          border-color: rgba(197,160,89,0.65);
+          border-color: var(--color-secondary);
           background: rgba(197,160,89,0.08);
         }
 
-        .slot-chip.disabled,
-        .mobile-slot.disabled {
-          color: var(--color-text-muted);
-          background: rgba(232,224,216,0.52);
-          cursor: not-allowed;
+        .schedule-time-chip.selected,
+        .sex-options button.active,
+        .mobile-switcher button.active {
+          background: var(--color-primary);
+          border-color: var(--color-primary);
+          color: var(--color-tertiary);
+          box-shadow: 0 2px 8px -3px rgba(74,55,40,0.35);
         }
 
-        .slot-chip.selected,
-        .mobile-slot.selected,
-        .sex-options button.active,
-        .mobile-day-tabs button.active,
-        .mobile-switcher button.active {
-          color: white;
-          border-color: var(--color-secondary);
-          background: linear-gradient(180deg, #d4ac62 0%, #bb8f43 100%);
-          box-shadow: 0 10px 22px rgba(74,55,40,0.12);
+        .schedule-empty {
+          margin: 2px 0 0;
+          font-size: 13px;
+          color: var(--color-text-muted);
+          font-style: italic;
         }
 
         .mobile-schedule,
@@ -2894,11 +3466,8 @@ export default function ReservaTurnoPage() {
         }
 
         .confirmation-total {
-          margin-top: 4px;
-          padding-top: 18px;
-          border-top: 1px solid rgba(223,206,184,0.92);
-          display: grid;
-          gap: 12px;
+          margin-top: 18px;
+          padding-top: 4px;
         }
 
         .confirmation-section {
@@ -2957,6 +3526,26 @@ export default function ReservaTurnoPage() {
           color: var(--color-text-secondary);
         }
 
+        .confirmation-total-card {
+          display: grid;
+          gap: 18px;
+          padding: 22px 24px;
+          border-radius: 22px;
+          background: linear-gradient(180deg, rgba(255,253,249,0.98) 0%, rgba(251,247,240,0.94) 100%);
+          border: 1px solid rgba(232,224,216,0.95);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+        }
+
+        .confirmation-total-row {
+          padding-bottom: 16px;
+          border-bottom: 1px solid rgba(232,224,216,0.82);
+        }
+
+        .confirmation-discounts {
+          display: grid;
+          gap: 18px;
+        }
+
         .grand-total span,
         .summary-total span {
           color: var(--color-text-primary);
@@ -2996,13 +3585,18 @@ export default function ReservaTurnoPage() {
 
         .grand-total {
           margin-top: 4px;
-          padding-top: 10px;
-          border-top: 1px solid rgba(232,224,216,0.95);
+          padding-top: 18px;
+          border-top: 1px solid rgba(223,206,184,0.56);
         }
 
         .summary-line.discount,
         .summary-line.discount strong {
           color: var(--color-secondary);
+        }
+
+        .summary-discounts {
+          display: grid;
+          gap: 14px;
         }
 
         .policy-card {
@@ -3815,15 +4409,6 @@ export default function ReservaTurnoPage() {
             grid-template-columns: 1fr;
           }
 
-          .desktop-schedule {
-            display: none;
-          }
-
-          .mobile-schedule,
-          .mobile-switcher {
-            display: block;
-          }
-
           .mobile-switcher {
             display: inline-flex;
             gap: 10px;
@@ -3842,32 +4427,6 @@ export default function ReservaTurnoPage() {
 
           .mobile-hidden {
             display: none;
-          }
-
-          .mobile-day-tabs {
-            display: flex;
-            gap: 10px;
-            margin-top: 22px;
-          }
-
-          .mobile-day-tabs button {
-            flex: 1;
-            padding: 12px;
-            color: var(--color-text-secondary);
-          }
-
-          .mobile-slot-list {
-            display: grid;
-            gap: 12px;
-            margin-top: 18px;
-          }
-
-          .mobile-slot {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 16px 18px;
-            color: var(--color-text-primary);
           }
 
           .footer-actions,
@@ -3970,13 +4529,20 @@ export default function ReservaTurnoPage() {
             width: 100%;
           }
 
-          .week-nav {
-            flex-direction: column;
-            align-items: stretch;
+          .schedule-picker {
+            grid-template-columns: 1fr;
+            gap: 18px;
           }
 
-          .week-nav strong {
-            text-align: center;
+          .schedule-picker-left {
+            border-bottom: 1px solid var(--color-neutral-light);
+            padding: 0 0 18px;
+          }
+
+          .schedule-picker-right {
+            padding: 0;
+            min-height: unset;
+            border-left: none;
           }
 
           .manual-coupon-row {

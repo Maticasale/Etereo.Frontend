@@ -7,8 +7,9 @@ import { GoogleLogin } from '@react-oauth/google'
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
-import { getErrorCode } from '@/lib/errors'
-import type { LoginRequest } from '@/types/api'
+import { getErrorCode, getErrorMessage } from '@/lib/errors'
+import { needsProfileCompletion } from '@/lib/authFlow'
+import type { LoginRequest, UsuarioDto } from '@/types/api'
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
@@ -21,7 +22,7 @@ type LoginFormValues = z.infer<typeof loginSchema>
 
 // ─── Mapeo de errores del backend ────────────────────────────────────────────
 
-function mapBackendError(codigo: string | undefined): string {
+function mapBackendError(codigo: string | undefined, fallback: string): string {
   switch (codigo) {
     case 'CREDENCIALES_INVALIDAS':
       return 'Email o contraseña incorrectos'
@@ -30,7 +31,7 @@ function mapBackendError(codigo: string | undefined): string {
     case 'USAR_GOOGLE_AUTH':
       return 'Esta cuenta usa Google. Ingresá con el botón de Google.'
     default:
-      return 'Ocurrió un error al iniciar sesión'
+      return fallback || 'Ocurrió un error al iniciar sesión'
   }
 }
 
@@ -109,20 +110,27 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema) as any,
   })
 
-  function redirectAfterLogin(rol: string, debeCambiarPassword: boolean) {
-    if (debeCambiarPassword) {
+  function redirectAfterLogin(usuario: UsuarioDto) {
+    if (usuario.debeCambiarPassword) {
       navigate('/cambiar-password', { replace: true })
       return
     }
     const redirect = searchParams.get('redirect')
+    if (needsProfileCompletion(usuario)) {
+      navigate(
+        redirect === 'reserva' ? '/completar-perfil?redirect=reserva' : '/completar-perfil',
+        { replace: true },
+      )
+      return
+    }
     if (redirect === 'reserva') {
       navigate('/?iniciar_reserva=1', { replace: true })
       return
     }
-    if (rol === 'Admin' || rol === 'Operario') {
+    if (usuario.rol === 'Admin' || usuario.rol === 'Operario') {
       navigate('/panel', { replace: true })
     } else {
-      navigate('/', { replace: true })
+      navigate('/mi-cuenta', { replace: true })
     }
   }
 
@@ -137,9 +145,9 @@ export default function LoginPage() {
       const { accessToken, refreshToken, usuario } = await authApi.login(payload)
       setAuth(accessToken, refreshToken, usuario)
       toast.success(`¡Bienvenida, ${usuario.nombre}!`)
-      redirectAfterLogin(usuario.rol, usuario.debeCambiarPassword)
+      redirectAfterLogin(usuario)
     } catch (err) {
-      setGlobalError(mapBackendError(getErrorCode(err)))
+      setGlobalError(mapBackendError(getErrorCode(err), getErrorMessage(err)))
     } finally {
       setIsLoading(false)
     }
@@ -155,9 +163,9 @@ export default function LoginPage() {
       )
       setAuth(accessToken, refreshToken, usuario)
       toast.success(`¡Bienvenida, ${usuario.nombre}!`)
-      redirectAfterLogin(usuario.rol, usuario.debeCambiarPassword)
+      redirectAfterLogin(usuario)
     } catch (err) {
-      setGlobalError(mapBackendError(getErrorCode(err)))
+      setGlobalError(mapBackendError(getErrorCode(err), getErrorMessage(err)))
     } finally {
       setIsGoogleLoading(false)
     }

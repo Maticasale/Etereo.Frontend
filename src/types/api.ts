@@ -57,6 +57,11 @@ export interface ResetPasswordRequest {
   passwordNueva: string
 }
 
+export interface CompletarPerfilRequest {
+  telefono?: string
+  sexo?: 'Masculino' | 'Femenino'
+}
+
 export interface BloquearUsuarioRequest {
   motivo: string
 }
@@ -157,6 +162,7 @@ export interface CrearTurnoRequest {
   fechaHoraInicio: string
   notas?: string
   cuponId?: number
+  codigoDescuento?: string
 }
 
 export interface CrearTurnoEnSesionRequest {
@@ -172,6 +178,26 @@ export interface CrearSesionRequest {
   salon: string
   fechaHoraInicio: string
   zonas: CrearTurnoEnSesionRequest[]
+  cuponId?: number
+  codigoDescuento?: string
+}
+
+export interface DisponibilidadSesionZonaRequest {
+  subservicioId: number
+  varianteId?: number
+}
+
+export interface DisponibilidadSesionRequest {
+  salon: 'Salon1' | 'Salon2'
+  fecha: string
+  zonas: DisponibilidadSesionZonaRequest[]
+}
+
+export interface TurnosDisponibilidadQuery {
+  fecha: string
+  subservicioId: number
+  varianteId?: number
+  duracionMin?: number
 }
 
 export interface AsignarOperariaRequest {
@@ -261,6 +287,52 @@ export interface CuponDto {
   usosMaximos?: number
   usosActuales: number
   unUsoPorCliente: boolean
+  activo: boolean
+  creadoEn: string
+}
+
+export interface CrearCodigoDescuentoRequest {
+  codigo: string
+  nombre: string
+  descripcionBreve?: string
+  serviciosIds?: number[]
+  subserviciosIds?: number[]
+  variantesIds?: number[]
+  tipoDescuento: string
+  valor: number
+  fechaVencimiento?: string
+  usosMaximos?: number
+}
+
+export interface ActualizarCodigoDescuentoRequest {
+  nombre?: string
+  descripcionBreve?: string
+  serviciosIds?: number[]
+  subserviciosIds?: number[]
+  variantesIds?: number[]
+  tipoDescuento?: string
+  valor?: number
+  fechaVencimiento?: string | null
+  usosMaximos?: number | null
+}
+
+export interface EstadoCodigoDescuentoRequest {
+  activo: boolean
+}
+
+export interface CodigoDescuentoDto {
+  id: number
+  codigo: string
+  nombre: string
+  descripcionBreve?: string
+  serviciosIds?: number[]
+  subserviciosIds?: number[]
+  variantesIds?: number[]
+  tipoDescuento: string
+  valor: number
+  fechaVencimiento?: string
+  usosMaximos?: number
+  usosActuales: number
   activo: boolean
   creadoEn: string
 }

@@ -2,7 +2,7 @@
 
 > Documento técnico maestro del frontend. Refleja el diseño acordado del sistema de gestión de la estética Etereo.
 > Combina estado actual del código + comportamiento objetivo cuando un módulo todavía no fue implementado por completo.
-> Última actualización: Mayo 2026 — v8: wizard público `/reservar` refinado visualmente, entrypoint por datos del cliente, filtrado inicial por sexo y pantalla de éxito alineada al HTML aprobado.
+> Última actualización: Mayo 2026 — v9: auth de cliente extendida (registro, forgot/reset, cambio obligatorio, completar perfil post-Google) y wizard público `/reservar` refinado visualmente con pantalla de éxito alineada al HTML aprobado.
 
 ---
 
@@ -149,20 +149,25 @@ etereo-frontend/
 │   ├── hooks/
 │   │   ├── useAuth.ts
 │   │   ├── useRol.ts               — isAdmin(), isOperario(), isCliente()
-│   │   └── useToast.ts
+│   │   ├── useToast.ts
+│   │   └── useAuthBackRedirect.ts  — controla el "atrás" del navegador en pantallas auth [Implementado]
 │   │
 │   ├── lib/
 │   │   ├── utils.ts                — cn() (twMerge + clsx)
 │   │   ├── errors.ts               — getErrorMessage() mapea códigos del backend
+│   │   ├── authFlow.ts             — reglas de redirect post-auth / perfil incompleto [Implementado]
 │   │   └── whatsapp.ts             — buildWhatsAppUrl(telefono, mensaje)
 │   │
 │   ├── pages/
 │   │   ├── auth/
 │   │   │   ├── LoginPage.tsx       — Login con Google OAuth + redirect post-auth [Implementado]
-│   │   │   ├── RegistroPage.tsx    — Ruta existente, contenido todavía placeholder [Parcial]
-│   │   │   └── CambiarPasswordPage.tsx — Ruta existente, contenido todavía placeholder [Parcial]
+│   │   │   ├── RegistroPage.tsx    — Registro normal + alta/ingreso con Google [Implementado]
+│   │   │   ├── ForgotPasswordPage.tsx — Solicitud de recuperación por email [Implementado]
+│   │   │   ├── ResetPasswordPage.tsx  — Nueva contraseña vía token [Implementado]
+│   │   │   ├── CambiarPasswordPage.tsx — Cambio obligatorio de contraseña en primer ingreso [Implementado]
+│   │   │   └── CompletarPerfilPage.tsx — Pantalla post-Google para completar teléfono/sexo [Implementado]
 │   │   ├── portal/                 — Vistas del cliente (público)
-│   │   │   ├── ReservaTurnoPage.tsx  — Wizard público de reserva, interactivo/prototipo de alta fidelidad [Implementado]
+│   │   │   ├── ReservaTurnoPage.tsx  — Wizard público de reserva, conectado parcialmente al backend real [Implementado]
 │   │   │   ├── MisTurnosPage.tsx     — Ruta existente, contenido placeholder [Parcial]
 │   │   │   ├── MisCuponesPage.tsx    — Ruta existente, contenido placeholder [Parcial]
 │   │   │   └── MiPerfilPage.tsx      — Ruta existente, contenido placeholder [Parcial]
@@ -242,6 +247,37 @@ import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google'
 />
 ```
 
+### Flujos auth ya implementados
+
+- **Registro normal**: `RegistroPage` usa RHF + Zod y exige `nombre`, `apellido`, `telefono`, `email`, `sexo` y `password`.
+- **Registro / ingreso con Google**: `RegistroPage` y `LoginPage` comparten el flujo de `authApi.googleLogin()`.
+- **Recuperación de contraseña**: `ForgotPasswordPage` llama `POST /auth/forgot-password`.
+- **Reset por token**: `ResetPasswordPage` lee `?token=...` y llama `POST /auth/reset-password`.
+- **Cambio obligatorio de contraseña**: `CambiarPasswordPage` consume `POST /auth/cambiar-password` y limpia `debeCambiarPassword` en `authStore`.
+- **Completar perfil post-Google**: si el cliente autenticado no tiene `telefono` o tiene `sexo = NoEspecifica`, el frontend redirige a `/completar-perfil`.
+
+### Completar perfil post-Google
+
+> Estado frontend: **Implementado**
+>
+> Estado integración backend: **Implementado**
+
+- El frontend detecta perfil incompleto con `needsProfileCompletion(usuario)` en `src/lib/authFlow.ts`.
+- Criterio actual:
+  - `usuario.rol === 'Cliente'`
+  - `telefono` vacío/null, o
+  - `sexo` ausente / `NoEspecifica`
+- Si se cumple, `PostAuthRedirectHandler` y las pantallas auth redirigen a `/completar-perfil`.
+- `CompletarPerfilPage` pide solo:
+  - `telefono`
+  - `sexo` (`Femenino` | `Masculino`)
+- Aclaración UX implementada:
+  - “Escribí solo la caracteristica y el numero, sin +54 9.”
+- Persistencia actual:
+  - usa `PATCH /auth/completar-perfil`
+  - no reutiliza `PATCH /usuarios/{id}`, que sigue siendo solo `Admin`
+  - el endpoint devuelve `UsuarioDto` actualizado y el frontend refresca `authStore`
+
 ### Cambio de contraseña forzado
 Si `usuario.debeCambiarPassword = true` en el AuthResponse → el router redirige automáticamente a `/cambiar-password` antes de continuar a cualquier otra ruta.
 
@@ -311,7 +347,7 @@ El Sidebar filtra automáticamente los items del menú según el rol del usuario
 > Estado: **Implementado**
 >
 > La ruta `/reservar` ya no es placeholder: hoy existe un wizard público navegable e interactivo en React.
-> Su estado actual es **prototipo funcional / alta fidelidad**: resuelve layout, jerarquía visual, comportamiento entre pasos y reglas base de negocio visibles, aunque todavía no consume el backend real de forma completa.
+> Su estado actual es **integración parcial real**: ya consume catálogo, disponibilidad y creación de reserva contra backend, aunque todavía faltan ajustes finales de endurecimiento y módulos cliente posteriores.
 
 ### Flujo actual implementado en `ReservaTurnoPage`
 
@@ -324,34 +360,40 @@ Paso 1 — Tus datos
 Paso 2 — Servicio
   → Selector de salón con cards editoriales grandes
   → Si sexo = Masculino, Salón 2 no se muestra
+  → El catálogo sale de `GET /servicios`
   → Luego se elige el servicio dentro del salón seleccionado
   → En este paso no se muestra todavía el resumen lateral
 
 Paso 3 — Selección
-  → Caso demo actual: Depilación Láser
-  → Columna izquierda: combos destacados
-  → Columna derecha: zonas individuales agrupadas por sexo
+  → Usa subservicios / packs / variantes reales del servicio elegido
+  → Columna izquierda: packs o combos activos
+  → Columna derecha: opciones individuales relevantes para el sexo ya elegido en Paso 1
   → Si se elige un combo:
       - se limpian las zonas individuales previamente seleccionadas
       - la columna de zonas queda atenuada/bloqueada
       - aparece CTA "Deseleccionar combo"
   → Si se eligen 3 o más zonas individuales:
-      - se aplica descuento automático del 15%
+      - se aplica descuento automático visible según el servicio (ej. Láser 15%, Descartable 10%)
       - aparece banner visual de descuento aplicado
 
 Paso 4 — Horario
-  → Selector visual de semana
+  → Calendario mensual visual
+  → Consulta disponibilidad real por mes
+  → Turno simple → `GET /turnos/disponibilidad`
+  → Sesión multi-zona → `POST /sesiones/disponibilidad`
   → Elección de día primero, luego horarios del día
-  → La demo actual usa bloques de 30 minutos
   → El botón siguiente solo se habilita cuando hay día + hora seleccionados
 
 Paso 5 — Cupón
-  → Si usuario autenticado: muestra cupones simulados + ingreso manual
+  → Si usuario autenticado: `GET /cupones/disponibles`
   → Si usuario invitado: solo ingreso manual de código
+  → Código manual: `GET /codigos-descuento/validar/{codigo}`
   → El resumen se recalcula en vivo
 
 Paso 6 — Confirmar
   → Resumen final de salón, servicio, selección, fecha/hora, duración y total
+  → Turno simple: `POST /turnos`
+  → Sesión multi-zona: `POST /sesiones`
   → Éxito visual posterior con estado "Pendiente de confirmación"
   → La pantalla final replica la maqueta HTML aprobada: hero centrado, card principal dividida, timeline vertical segmentada, mini acciones inline y bloque de ayuda
 ```
@@ -373,16 +415,17 @@ Paso 6 — Confirmar
 - Entry anónimo y autenticado
 - Filtro inicial por sexo en UI
 - Ocultamiento de Salón 2 para sexo masculino
+- Catálogo real desde `GET /servicios`
+- Disponibilidad real simple y de sesión
+- Aplicación de cupones del cliente y códigos de descuento manuales
+- Creación real vía `POST /turnos` y `POST /sesiones`
 - Resumen lateral y resumen mobile
-- Cupón simulado y descuentos visuales
 - Pantalla de éxito alineada al diseño standalone aprobado (`hero + card principal + timeline + help block + footer`)
 
 **Todavía pendiente de conectar o endurecer**
-- Datos reales desde `GET /servicios`
-- Disponibilidad real desde backend
-- Variantes reales de subservicio
-- Creación final con `POST /turnos` / `POST /sesiones`
-- Validaciones finales de negocio sincronizadas 100% con contrato
+- endurecer mensajes de error de reserva por caso de negocio
+- refrescar “Mis turnos / Mis cupones” con los datos reales creados por el wizard
+- revisar optimización de disponibilidad mensual para no depender de múltiples requests por mes
 
 ---
 
@@ -583,7 +626,7 @@ export function XxxFormDialog({ open, onOpenChange, onSubmit, isSubmitting }: Pr
 
 - **Alias:** `@/` apunta a `src/`
 - **Idioma:** archivos y componentes en inglés/PascalCase; strings UI en español rioplatense
-- **Sexo en registro/reserva:** en registro puede seguir existiendo `NoEspecifica`, pero en el wizard `/reservar` el sexo es obligatorio antes de mostrar salones y servicios. La UI pública de reserva trabaja con dos opciones: `Femenino` y `Masculino`.
+- **Sexo en auth/reserva:** en `RegistroPage` y `CompletarPerfilPage` el frontend hoy trabaja con dos opciones: `Femenino` y `Masculino`. En el wizard `/reservar` también es obligatorio antes de mostrar salones y servicios.
 - **Query keys:** `['recurso', filtros]` → ej: `['turnos', { desde, hasta, operarioId }]`
 - **Errores de mutaciones:** siempre `onError: (err) => toast.error(getErrorMessage(err))`
 - **Formularios con números:** `z.coerce.number()` + `as any` en el resolver
@@ -628,8 +671,8 @@ En dev, `vite.config.ts` proxea `/api` al backend local.
 
 > Estado general: **Parcial**
 >
-> El entrypoint desde landing, `ReservaTurnoModal`, `LoginPage`, el redirect post-auth y el wizard visual `/reservar` ya están implementados.
-> Lo que sigue pendiente es terminar registro/cambio de contraseña y conectar el wizard con datos reales del backend.
+> El entrypoint desde landing, el bloque auth de cliente, el redirect post-auth y el wizard visual `/reservar` ya están implementados.
+> Lo que sigue pendiente es conectar el wizard con datos reales del backend y terminar de endurecer estados/errores de negocio del portal.
 
 ### Flujo de entrada
 
@@ -646,6 +689,11 @@ Landing → botón "Reservar turno":
 
 Post login con ?redirect=reserva   → navigate('/?iniciar_reserva=1', { replace: true })
 Post ?iniciar_reserva=1 en URL     → useReservaTurno detecta, limpia URL, setWizardOpen(true)
+
+Si cliente autenticado tiene perfil incompleto:
+  → `/completar-perfil`
+  → completa `telefono` y `sexo`
+  → luego vuelve a `/?iniciar_reserva=1` si venía desde reserva
 ```
 
 ### Componentes involucrados
@@ -655,18 +703,22 @@ Post ?iniciar_reserva=1 en URL     → useReservaTurno detecta, limpia URL, setW
 | `ReservaTurnoModal` | `src/components/shared/ReservaTurnoModal.tsx` |
 | `useReservaTurno` | `src/hooks/useReservaTurno.ts` |
 | `PostAuthRedirectHandler` | `src/App.tsx` (safety-net para /registro?redirect=reserva) |
+| `needsProfileCompletion` | `src/lib/authFlow.ts` |
+| `useAuthBackRedirect` | `src/hooks/useAuthBackRedirect.ts` |
 
 ### Lógica clave
 
 - **`LoginPage.tsx`** — `redirectAfterLogin()` lee `?redirect=reserva` del `useSearchParams` y navega a `/?iniciar_reserva=1` (replace).
-- **`PostAuthRedirectHandler`** (App.tsx) — efecto que observa `[usuario, location.search]`; si el usuario se autentica y aún hay `?redirect=reserva` en la URL (ej: RegistroPage), redirige a `/?iniciar_reserva=1`.
+- **`PostAuthRedirectHandler`** (App.tsx) — si el usuario autenticado necesita completar perfil, prioriza `/completar-perfil`; si no, y aún existe `?redirect=reserva`, redirige a `/?iniciar_reserva=1`.
 - **`useReservaTurno`** — en `useEffect([], [])` detecta `?iniciar_reserva=1`, hace `setSearchParams({}, { replace: true })` para limpiar la URL del historial y pone `wizardOpen = true`.
 - El modal **nunca** se muestra si `usuario !== null` — la lógica de apertura vive 100% en `handleReservarTurno()`.
+- **`useAuthBackRedirect`** — fuerza que el botón atrás del navegador/trackpad/mouse se comporte como “Volver al login” en `Registro`, `Forgot password` y `Reset password`.
 
 ### Estado actual del código
 
 - `LoginPage` está implementada y funcional con Google OAuth, manejo de errores y redirect post-auth.
-- `RegistroPage` y `CambiarPasswordPage` existen como rutas, pero todavía están en placeholder.
+- `RegistroPage`, `ForgotPasswordPage`, `ResetPasswordPage` y `CambiarPasswordPage` están implementadas con el mismo lenguaje visual del login.
+- `CompletarPerfilPage` existe, ya está conectada al flujo post-Google y persiste vía `PATCH /auth/completar-perfil`.
 - `ReservaTurnoModal` y `PublicLayout` ya disparan correctamente el flujo hacia `/login`, `/registro` o `/reservar`.
 
 ### LoginPage — diseño visual
@@ -703,6 +755,8 @@ src/pages/public/landing/
   └── FooterSection.tsx      — marca, navegación, contacto, copyright
 
 src/api/servicios.ts         — getServicios() implementado (anónimo)
+src/api/turnos.ts            — disponibilidad simple, disponibilidad de sesión, crear turno, crear sesión
+src/api/cupones.ts           — cupones del cliente + validación de códigos de descuento
 src/api/estadisticas.ts      — helper admin-only + TODO para endpoint público de calificaciones
 ```
 
@@ -717,11 +771,13 @@ src/api/estadisticas.ts      — helper admin-only + TODO para endpoint público
 
 ### PublicHeader
 
-- `position: fixed`, `z-index: 100`, `height: 68px`.
-- **Transparente** (scrollY < 60px): fondo `transparent`, wordmark blanco.
-- **Sólido** (scrollY ≥ 60px): `rgba(74,55,40,0.96)` + `backdrop-blur(12px)` + wordmark `var(--color-secondary)`.
+- `position: fixed`, full-width, con transición de ocultamiento/aparición según dirección del scroll.
+- Cambia entre una variante más translúcida y otra más sólida/blurred según profundidad de scroll.
 - Desktop (`≥ sm`): botón ghost `[Ingresar]` + botón dorado `[Reservar turno]`.
 - Mobile (`< sm`): link texto "Ingresar" + botón compacto dorado "Reservar".
+- Excepción importante:
+  - en la ruta `/reservar` el CTA `Reservar turno` se oculta para no redundar dentro del propio wizard.
+  - además puede ocultarse por evento `etereo:public-header-visible` cuando una pantalla pública necesita tomar todo el foco visual.
 
 ### Secciones de la Landing
 

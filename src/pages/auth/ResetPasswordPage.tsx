@@ -6,6 +6,7 @@ import { z } from 'zod'
 import AuthFrame, { authInputStyle } from './AuthFrame'
 import { authApi } from '@/api/auth'
 import { getErrorCode } from '@/lib/errors'
+import { useAuthBackRedirect } from '@/hooks/useAuthBackRedirect'
 
 const resetSchema = z.object({
   passwordNueva: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres'),
@@ -28,6 +29,8 @@ function mapBackendError(codigo: string | undefined): string {
 }
 
 export default function ResetPasswordPage() {
+  useAuthBackRedirect({ to: '/login' })
+
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const token = searchParams.get('token')

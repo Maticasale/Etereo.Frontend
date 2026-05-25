@@ -7,6 +7,7 @@ import type {
   CambiarPasswordRequest,
   ForgotPasswordRequest,
   ResetPasswordRequest,
+  CompletarPerfilRequest,
   UsuarioDto,
 } from '@/types/api'
 
@@ -38,4 +39,7 @@ export const authApi = {
 
   resetPassword: (data: ResetPasswordRequest) =>
     apiClient.post(`${BASE}/reset-password`, data),
+
+  completarPerfil: (data: CompletarPerfilRequest) =>
+    apiClient.patch<{ data: UsuarioDto }>(`${BASE}/completar-perfil`, data).then((r) => r.data.data),
 }

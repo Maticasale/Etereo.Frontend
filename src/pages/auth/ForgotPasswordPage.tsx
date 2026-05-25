@@ -6,6 +6,7 @@ import { z } from 'zod'
 import AuthFrame, { authInputStyle } from './AuthFrame'
 import { authApi } from '@/api/auth'
 import { getErrorCode } from '@/lib/errors'
+import { useAuthBackRedirect } from '@/hooks/useAuthBackRedirect'
 
 const forgotSchema = z.object({
   email: z.string().min(1, 'El email es requerido').email('Email inválido'),
@@ -23,6 +24,8 @@ function mapBackendError(codigo: string | undefined): string {
 }
 
 export default function ForgotPasswordPage() {
+  useAuthBackRedirect({ to: '/login' })
+
   const [isLoading, setIsLoading] = useState(false)
   const [globalError, setGlobalError] = useState<string | null>(null)
   const [sentTo, setSentTo] = useState<string | null>(null)
@@ -49,7 +52,7 @@ export default function ForgotPasswordPage() {
       eyebrow="Recuperar acceso"
       title={<>Recuperá tu contraseña<span style={{ color: 'var(--color-secondary)' }}>.</span></>}
       subtitle="Te enviamos un enlace para crear una nueva contraseña y volver a ingresar a tu cuenta."
-      footer={<>¿Te acordaste?{' '}<Link to="/login" style={{ color: 'var(--color-primary)', fontWeight: 600, borderBottom: '1px solid var(--color-primary)', paddingBottom: 1, textDecoration: 'none' }}>Volver al login</Link></>}
+      footer={<>¿Te acordaste?{' '}<Link to="/login" style={{ color: 'var(--color-primary)', fontWeight: 600, borderBottom: '1px solid var(--color-primary)', paddingBottom: 1, textDecoration: 'none' }}>Volver al inicio</Link></>}
     >
       {sentTo ? (
         <div style={{ padding: '18px 20px', background: 'rgba(39,174,96,0.08)', border: '1px solid rgba(39,174,96,0.22)', borderRadius: 12 }}>

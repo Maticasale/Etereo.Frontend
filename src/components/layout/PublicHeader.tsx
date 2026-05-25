@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowUpRight, CalendarHeart } from 'lucide-react'
+import { useAuthStore } from '@/store/authStore'
 
 interface PublicHeaderProps {
   onReservar: () => void
@@ -8,9 +9,24 @@ interface PublicHeaderProps {
 
 export default function PublicHeader({ onReservar }: PublicHeaderProps) {
   const navigate = useNavigate()
+  const location = useLocation()
+  const usuario = useAuthStore((state) => state.usuario)
   const [scrolled, setScrolled] = useState(false)
   const [hidden, setHidden] = useState(false)
   const [forcedHidden, setForcedHidden] = useState(false)
+  const hideReserveCta = location.pathname === '/reservar'
+
+  const accountTarget = usuario?.rol === 'Cliente'
+    ? '/mi-cuenta'
+    : usuario?.rol === 'Admin' || usuario?.rol === 'Operario'
+      ? '/panel'
+      : '/login'
+
+  const accountLabel = usuario?.rol === 'Cliente'
+    ? 'Mi cuenta'
+    : usuario?.rol === 'Admin' || usuario?.rol === 'Operario'
+      ? 'Ir al panel'
+      : 'Ingresar'
 
   useEffect(() => {
     const handleVisibility = (event: Event) => {
@@ -161,7 +177,7 @@ export default function PublicHeader({ onReservar }: PublicHeaderProps) {
 
             <nav className="hidden sm:flex items-center gap-4">
               <button
-                onClick={() => navigate('/login')}
+                onClick={() => navigate(accountTarget)}
                 className="public-header-login"
                 style={{
                   border: 'none',
@@ -181,41 +197,43 @@ export default function PublicHeader({ onReservar }: PublicHeaderProps) {
                   transition: 'color 180ms ease, background 180ms ease, transform 180ms ease',
                 }}
               >
-                Ingresar
+                {accountLabel}
                 <ArrowUpRight size={14} strokeWidth={1.8} />
               </button>
 
-              <button
-                onClick={onReservar}
-                className="public-header-cta"
-                style={{
-                  border: '1px solid rgba(197,160,89,0.14)',
-                  background: 'linear-gradient(135deg, #f4e1b4 0%, #ddb66f 48%, #c18c45 100%)',
-                  color: '#2C1F14',
-                  borderRadius: 9999,
-                  padding: scrolled ? '14px 22px' : '16px 26px',
-                  fontFamily: 'var(--font-body)',
-                  fontSize: 13,
-                  fontWeight: 800,
-                  letterSpacing: '0.1em',
-                  textTransform: 'uppercase',
-                  cursor: 'pointer',
-                  boxShadow: '0 10px 24px rgba(126, 88, 28, 0.18)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  transition:
-                    'transform 180ms ease, box-shadow 180ms ease, filter 180ms ease, padding 220ms ease',
-                }}
-              >
-                <CalendarHeart size={16} strokeWidth={1.8} />
-                Reservar turno
-              </button>
+              {!hideReserveCta ? (
+                <button
+                  onClick={onReservar}
+                  className="public-header-cta"
+                  style={{
+                    border: '1px solid rgba(197,160,89,0.14)',
+                    background: 'linear-gradient(135deg, #f4e1b4 0%, #ddb66f 48%, #c18c45 100%)',
+                    color: '#2C1F14',
+                    borderRadius: 9999,
+                    padding: scrolled ? '14px 22px' : '16px 26px',
+                    fontFamily: 'var(--font-body)',
+                    fontSize: 13,
+                    fontWeight: 800,
+                    letterSpacing: '0.1em',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    boxShadow: '0 10px 24px rgba(126, 88, 28, 0.18)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    transition:
+                      'transform 180ms ease, box-shadow 180ms ease, filter 180ms ease, padding 220ms ease',
+                  }}
+                >
+                  <CalendarHeart size={16} strokeWidth={1.8} />
+                  Reservar turno
+                </button>
+              ) : null}
             </nav>
 
             <nav className="flex sm:hidden items-center gap-3">
               <button
-                onClick={() => navigate('/login')}
+                onClick={() => navigate(accountTarget)}
                 style={{
                   border: 'none',
                   background: 'transparent',
@@ -228,27 +246,29 @@ export default function PublicHeader({ onReservar }: PublicHeaderProps) {
                   cursor: 'pointer',
                 }}
               >
-                Ingresar
+                {accountLabel}
               </button>
 
-              <button
-                onClick={onReservar}
-                style={{
-                  border: '1px solid rgba(197,160,89,0.16)',
-                  background: 'linear-gradient(135deg, #f4e1b4 0%, #ddb66f 48%, #c18c45 100%)',
-                  color: '#2C1F14',
-                  borderRadius: 9999,
-                  padding: '12px 16px',
-                  fontFamily: 'var(--font-body)',
-                  fontSize: 11,
-                  fontWeight: 800,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                  cursor: 'pointer',
-                }}
-              >
-                Reservar
-              </button>
+              {!hideReserveCta ? (
+                <button
+                  onClick={onReservar}
+                  style={{
+                    border: '1px solid rgba(197,160,89,0.16)',
+                    background: 'linear-gradient(135deg, #f4e1b4 0%, #ddb66f 48%, #c18c45 100%)',
+                    color: '#2C1F14',
+                    borderRadius: 9999,
+                    padding: '12px 16px',
+                    fontFamily: 'var(--font-body)',
+                    fontSize: 11,
+                    fontWeight: 800,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Reservar
+                </button>
+              ) : null}
             </nav>
           </div>
         </div>

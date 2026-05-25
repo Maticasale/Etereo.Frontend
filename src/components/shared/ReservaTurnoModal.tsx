@@ -18,7 +18,8 @@ import { useState } from 'react'
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
-import { getErrorCode } from '@/lib/errors'
+import { getErrorCode, getErrorMessage } from '@/lib/errors'
+import { needsProfileCompletion } from '@/lib/authFlow'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -109,7 +110,7 @@ function BotanicalSVGModal() {
 
 // ─── Mapeo de errores ─────────────────────────────────────────────────────────
 
-function mapBackendError(codigo: string | undefined): string {
+function mapBackendError(codigo: string | undefined, fallback: string): string {
   switch (codigo) {
     case 'CREDENCIALES_INVALIDAS':
       return 'No pudimos autenticarte. Intentá con email o registrate.'
@@ -118,7 +119,7 @@ function mapBackendError(codigo: string | undefined): string {
     case 'USAR_GOOGLE_AUTH':
       return 'Esta cuenta usa Google. Ingresá con el botón de Google.'
     default:
-      return 'Ocurrió un error al ingresar con Google'
+      return fallback || 'Ocurrió un error al ingresar con Google'
   }
 }
 
@@ -141,10 +142,16 @@ export function ReservaTurnoModal({ open, onOpenChange, onAnonimo }: ReservaTurn
       setAuth(accessToken, refreshToken, usuario)
       toast.success(`¡Bienvenida, ${usuario.nombre}!`)
       onOpenChange(false)
+
+      if (needsProfileCompletion(usuario)) {
+        navigate('/completar-perfil?redirect=reserva', { replace: true })
+        return
+      }
+
       // Post-auth: iniciar wizard directo
       navigate('/?iniciar_reserva=1', { replace: true })
     } catch (err) {
-      setGoogleError(mapBackendError(getErrorCode(err)))
+      setGoogleError(mapBackendError(getErrorCode(err), getErrorMessage(err)))
     } finally {
       setIsGoogleLoading(false)
     }

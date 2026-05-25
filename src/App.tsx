@@ -15,9 +15,12 @@ import RegistroPage from '@/pages/auth/RegistroPage'
 import CambiarPasswordPage from '@/pages/auth/CambiarPasswordPage'
 import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage'
 import ResetPasswordPage from '@/pages/auth/ResetPasswordPage'
+import CompletarPerfilPage from '@/pages/auth/CompletarPerfilPage'
+import { needsProfileCompletion } from '@/lib/authFlow'
 
 // Portal (cliente)
 import ReservaTurnoPage from '@/pages/portal/ReservaTurnoPage'
+import MiCuentaPage from '@/pages/portal/MiCuentaPage'
 import MisTurnosPage from '@/pages/portal/MisTurnosPage'
 import MisCuponesPage from '@/pages/portal/MisCuponesPage'
 import MiPerfilPage from '@/pages/portal/MiPerfilPage'
@@ -59,10 +62,24 @@ function PostAuthRedirectHandler() {
 
   useEffect(() => {
     if (!usuario) return
+    if (usuario.debeCambiarPassword) return
+
+    const redirectToReserva = searchParams.get('redirect') === 'reserva'
+
+    if (needsProfileCompletion(usuario)) {
+      if (location.pathname !== '/completar-perfil') {
+        navigate(
+          redirectToReserva ? '/completar-perfil?redirect=reserva' : '/completar-perfil',
+          { replace: true },
+        )
+      }
+      return
+    }
+
     if (searchParams.get('redirect') === 'reserva') {
       navigate('/?iniciar_reserva=1', { replace: true })
     }
-  }, [usuario, location.search]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [usuario, location.pathname, location.search, navigate, searchParams])
 
   return null
 }
@@ -122,12 +139,16 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/cambiar-password" element={<CambiarPasswordPage />} />
+          <Route element={<ProtectedRoute roles={['Cliente']} />}>
+            <Route path="/completar-perfil" element={<CompletarPerfilPage />} />
+          </Route>
 
           {/* ── Calificar — anónimo con token JWT en query param ── */}
           <Route path="/calificar" element={<CalificarPage />} />
 
           {/* ── Rutas cliente autenticado ── */}
           <Route element={<ProtectedRoute roles={['Cliente']} />}>
+            <Route path="/mi-cuenta" element={<MiCuentaPage />} />
             <Route path="/mis-turnos" element={<MisTurnosPage />} />
             <Route path="/mis-cupones" element={<MisCuponesPage />} />
             <Route path="/mi-perfil" element={<MiPerfilPage />} />
