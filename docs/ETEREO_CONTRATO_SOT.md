@@ -2,7 +2,7 @@
 
 > Fuente de verdad compartida entre Backend (.NET Core) y Frontend Web (React).
 > Define el contrato de API, modelos, enums y convenciones de nombrado.
-> Última actualización: Mayo 2026 — v7: endpoint `/auth/completar-perfil` para onboarding post-Google, contrato `CompletarPerfilRequest`, restricciones de autocompletado único y errores de negocio asociados.
+> Última actualización: Mayo 2026 — v8: disponibilidad previa para sesiones multi-zona con `POST /sesiones/disponibilidad`, suma real de duraciones por subservicio/variante y reutilización de `DisponibilidadDto`.
 
 ---
 
@@ -179,6 +179,7 @@ Generados por `JwtService.GenerateAccessToken(Usuario)`:
 | Método | Ruta | Acceso |
 |---|---|---|
 | POST | `/sesiones` | Anónimo\|[Authorize] |
+| POST | `/sesiones/disponibilidad` | Anónimo |
 | GET | `/sesiones/{id}` | Admin\|Operario\|Cliente propio |
 | POST | `/turnos` | Anónimo\|[Authorize] |
 | GET | `/turnos` | Admin\|Operario |
@@ -200,6 +201,11 @@ Generados por `JwtService.GenerateAccessToken(Usuario)`:
 - `subservicioId: number`
 - `varianteId?: number`
 - `duracionMin?: number`
+
+`POST /sesiones/disponibilidad` usa body:
+- `salon: "Salon1" | "Salon2"`
+- `fecha: string`
+- `zonas: { subservicioId: number; varianteId?: number }[]`
 
 ### 4.7 Cupones
 
@@ -378,6 +384,8 @@ CrearTurnoRequest         { clienteId?: number; nombreAnonimo?: string; telefono
 CrearSesionRequest        { clienteId?: number; nombreAnonimo?: string; telefonoAnonimo?: string;
                             operarioId?: number; salon: string; fechaHoraInicio: string;
                             zonas: { subservicioId: number; varianteId?: number }[] }
+DisponibilidadSesionRequest { salon: string; fecha: string;
+                              zonas: { subservicioId: number; varianteId?: number }[] }
 AsignarOperariaRequest    { operarioId: number }
 RechazarTurnoRequest      { motivoRechazo: string }
 RealizarTurnoRequest      { metodoPagoId: number; precioFinal: number }
@@ -402,6 +410,15 @@ SlotOcupadoDto    { inicio: string; fin: string; estado: string }
 DisponibilidadDto { disponible: boolean; motivoNoDisponible?: string;
                     slotsOcupados: SlotOcupadoDto[]; horariosDisponibles: string[] }
 ```
+
+**Reglas de `POST /sesiones/disponibilidad`:**
+- No crea sesión ni turnos; es solo consulta previa.
+- Requiere al menos una zona.
+- Si un subservicio tiene variantes, `varianteId` es obligatorio para esa zona.
+- La duración total se calcula como la suma real de `duracionMin` de cada subservicio o variante.
+- La disponibilidad se calcula para la sesión completa, no por zona individual.
+- Solo devuelve horarios donde una misma operaria puede realizar todas las zonas.
+- Reutiliza `DisponibilidadDto` como respuesta.
 
 ### 5.6 Cupones
 
@@ -639,6 +656,14 @@ Ver `ETEREO_BACKEND_SOT.md` sección 8 para la tabla completa de `ErrorCode` por
 | `SEXO_INVALIDO` | 400 | El sexo debe ser Masculino o Femenino |
 | `CAMPO_YA_COMPLETO` | 409 | Se intentó modificar telefono o sexo ya completado |
 | `PERFIL_YA_COMPLETO` | 409 | Telefono y sexo ya estaban completos |
+
+**Errores nuevos — Sesiones / disponibilidad previa:**
+| Código | Status | Mensaje |
+|---|---|---|
+| `ZONAS_REQUERIDAS` | 400 | Debe incluir al menos una zona |
+| `VARIANTE_REQUERIDA` | 400 | La zona requiere `varianteId` |
+| `VARIANTE_INVALIDA` | 400 | La variante no corresponde al subservicio enviado |
+| `DURACION_NO_CONFIGURADA` | 400 | Falta la duración real de alguna zona |
 
 **Errores nuevos — Turnos:**
 | Código | Status | Mensaje |
