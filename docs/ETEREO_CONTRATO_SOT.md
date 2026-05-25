@@ -2,7 +2,7 @@
 
 > Fuente de verdad compartida entre Backend (.NET Core) y Frontend Web (React).
 > Define el contrato de API, modelos, enums y convenciones de nombrado.
-> Última actualización: Mayo 2026 — v8: disponibilidad previa para sesiones multi-zona con `POST /sesiones/disponibilidad`, suma real de duraciones por subservicio/variante y reutilización de `DisponibilidadDto`.
+> Última actualización: Mayo 2026 — v9: convivencia de `cupones` exclusivos para clientes registrados con `codigos de descuento` manuales para registrados e invitados, más soporte en `POST /turnos` y `POST /sesiones`.
 
 ---
 
@@ -218,6 +218,26 @@ Generados por `JwtService.GenerateAccessToken(Usuario)`:
 | GET | `/cupones/disponibles` | Cliente |
 | GET | `/cupones/validar/{codigo}` | Cliente |
 
+**Aclaración de contrato:**
+- `cupones` y `codigos de descuento` conviven.
+- `cupones` = beneficios personales para clientes registrados.
+- `codigos de descuento` = promociones manuales reutilizables para clientes registrados o invitados.
+
+### 4.7.1 Códigos de descuento
+
+| Método | Ruta | Acceso |
+|---|---|---|
+| GET | `/codigos-descuento` | Admin |
+| POST | `/codigos-descuento` | Admin |
+| PUT | `/codigos-descuento/{id}` | Admin |
+| PATCH | `/codigos-descuento/{id}/estado` | Admin |
+| GET | `/codigos-descuento/validar/{codigo}` | Anónimo\|[Authorize] |
+
+`GET /codigos-descuento/validar/{codigo}` acepta query params opcionales:
+- `servicioId?: number`
+- `subservicioId?: number`
+- `varianteId?: number`
+
 ### 4.8 Imputaciones & Catálogos
 
 | Método | Ruta | Acceso |
@@ -379,11 +399,13 @@ DisponibilidadOperarioDto { id: number; operarioId: number; fecha: string; traba
 // Requests
 CrearTurnoRequest         { clienteId?: number; nombreAnonimo?: string; telefonoAnonimo?: string;
                             subservicioId: number; varianteId?: number;
-                            fechaHoraInicio: string; notas?: string; cuponId?: number }
+                            fechaHoraInicio: string; notas?: string; cuponId?: number;
+                            codigoDescuento?: string }
                             // operarioId ELIMINADO — el sistema auto-asigna
 CrearSesionRequest        { clienteId?: number; nombreAnonimo?: string; telefonoAnonimo?: string;
                             operarioId?: number; salon: string; fechaHoraInicio: string;
-                            zonas: { subservicioId: number; varianteId?: number }[] }
+                            zonas: { subservicioId: number; varianteId?: number }[];
+                            cuponId?: number; codigoDescuento?: string }
 DisponibilidadSesionRequest { salon: string; fecha: string;
                               zonas: { subservicioId: number; varianteId?: number }[] }
 AsignarOperariaRequest    { operarioId: number }
@@ -420,6 +442,13 @@ DisponibilidadDto { disponible: boolean; motivoNoDisponible?: string;
 - Solo devuelve horarios donde una misma operaria puede realizar todas las zonas.
 - Reutiliza `DisponibilidadDto` como respuesta.
 
+**Reglas de descuentos en `POST /turnos` y `POST /sesiones`:**
+- `cuponId` sigue reservado a clientes registrados.
+- `codigoDescuento` puede usarse con cliente registrado o invitado.
+- No se permite enviar `cuponId` y `codigoDescuento` al mismo tiempo.
+- Si la creación falla, no se consume uso.
+- Si la creación es exitosa, el uso se consume inmediatamente y no se devuelve luego.
+
 ### 5.6 Cupones
 
 ```typescript
@@ -436,6 +465,37 @@ CuponDto { id: number; codigo: string; descripcion?: string; tipoDescuento: stri
            serviciosIds?: number[]; fechaDesde: string; fechaHasta: string; usosMaximos?: number;
            usosActuales: number; unUsoPorCliente: boolean; activo: boolean; creadoEn: string }
 ```
+
+### 5.6.1 Códigos de descuento
+
+```typescript
+// Requests
+CrearCodigoDescuentoRequest {
+  codigo: string; nombre: string; descripcionBreve?: string;
+  serviciosIds?: number[]; subserviciosIds?: number[]; variantesIds?: number[];
+  tipoDescuento: string; valor: number; fechaVencimiento?: string; usosMaximos?: number
+}
+ActualizarCodigoDescuentoRequest {
+  nombre?: string; descripcionBreve?: string;
+  serviciosIds?: number[]; subserviciosIds?: number[]; variantesIds?: number[];
+  tipoDescuento?: string; valor?: number; fechaVencimiento?: string | null; usosMaximos?: number | null
+}
+EstadoCodigoDescuentoRequest { activo: boolean }
+
+// Response
+CodigoDescuentoDto {
+  id: number; codigo: string; nombre: string; descripcionBreve?: string;
+  serviciosIds?: number[]; subserviciosIds?: number[]; variantesIds?: number[];
+  tipoDescuento: string; valor: number; fechaVencimiento?: string; usosMaximos?: number;
+  usosActuales: number; activo: boolean; creadoEn: string
+}
+```
+
+**Reglas del módulo:**
+- Debe existir al menos un límite: `fechaVencimiento`, `usosMaximos` o ambos.
+- Si tiene ambos, deja de estar disponible cuando ocurra primero el vencimiento o el agotamiento.
+- No aparece en “mis cupones”.
+- Se valida y consume de forma separada a los cupones personales.
 
 ### 5.7 Imputaciones y Catálogos
 
@@ -664,6 +724,17 @@ Ver `ETEREO_BACKEND_SOT.md` sección 8 para la tabla completa de `ErrorCode` por
 | `VARIANTE_REQUERIDA` | 400 | La zona requiere `varianteId` |
 | `VARIANTE_INVALIDA` | 400 | La variante no corresponde al subservicio enviado |
 | `DURACION_NO_CONFIGURADA` | 400 | Falta la duración real de alguna zona |
+
+**Errores nuevos — Códigos de descuento / descuentos mixtos:**
+| Código | Status | Mensaje |
+|---|---|---|
+| `CODIGO_DESCUENTO_NO_ENCONTRADO` | 404 | Código de descuento no encontrado |
+| `CODIGO_DESCUENTO_EXPIRADO` | 400 | El código de descuento está vencido |
+| `CODIGO_DESCUENTO_AGOTADO` | 409 | El código de descuento agotó sus usos |
+| `CODIGO_DESCUENTO_NO_APLICA` | 409 | El código no aplica al ítem o sesión seleccionada |
+| `CODIGO_DESCUENTO_REQUIERE_LIMITE` | 400 | El código debe tener vencimiento, usos máximos o ambos |
+| `DESCUENTO_CONFLICTIVO` | 409 | No se puede enviar cupón y código a la vez |
+| `CUPON_REQUIERE_CLIENTE_REGISTRADO` | 400 | Los cupones son exclusivos para clientes registrados |
 
 **Errores nuevos — Turnos:**
 | Código | Status | Mensaje |
