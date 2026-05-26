@@ -57,7 +57,8 @@ interface ServiceOption {
   id: number
   salonId: SalonOption['id']
   nombre: string
-  descripcion: string
+  previewItems: string[]
+  previewOverflow: number
   subservicios: SubservicioDto[]
   iconKey: string
 }
@@ -181,16 +182,20 @@ function parsePackItems(detail?: string) {
     .filter(Boolean)
 }
 
-function buildServiceDescription(subservicios: SubservicioDto[], selectedSex: string) {
+function buildServicePreview(subservicios: SubservicioDto[], selectedSex: string) {
   const labels = subservicios
     .filter((subservicio) => subservicio.activo && matchesSexoOption(subservicio.sexo, selectedSex))
     .flatMap((subservicio) => {
       const variants = subservicio.variantes.filter((variant) => variant.activo && matchesSexoOption(variant.sexo, selectedSex))
       return variants.length > 0 ? variants.map((variant) => variant.nombre) : [subservicio.nombre]
     })
-    .slice(0, 5)
+  const previewItems = labels.slice(0, 4)
+  const previewOverflow = Math.max(labels.length - previewItems.length, 0)
 
-  return labels.join(' · ')
+  return {
+    previewItems,
+    previewOverflow,
+  }
 }
 
 function toLocalDateIso(date: Date) {
@@ -467,9 +472,9 @@ export default function ReservaTurnoPage() {
         const response = await serviciosApi.getServicios()
         if (cancelled) return
         setServicios(response.filter((servicio) => servicio.activo))
-      } catch {
+      } catch (error) {
         if (cancelled) return
-        setCatalogError('No pudimos cargar el catálogo de servicios. Probá de nuevo en unos instantes.')
+        setCatalogError(getErrorMessage(error))
       } finally {
         if (!cancelled) {
           setCatalogLoading(false)
@@ -512,11 +517,14 @@ export default function ReservaTurnoPage() {
 
       if (visibleSubservicios.length === 0) return null
 
+      const preview = buildServicePreview(servicio.subservicios, selectedSex)
+
       return {
         id: servicio.id,
         salonId,
         nombre: servicio.nombre,
-        descripcion: buildServiceDescription(servicio.subservicios, selectedSex),
+        previewItems: preview.previewItems,
+        previewOverflow: preview.previewOverflow,
         subservicios: visibleSubservicios,
         iconKey: normalizeTextKey(servicio.nombre),
       } satisfies ServiceOption
@@ -531,7 +539,7 @@ export default function ReservaTurnoPage() {
       return {
         id: salonId,
         nombre: salonId === 'salon1' ? 'Salón 1' : 'Salón 2',
-        titulo: salonId === 'salon1' ? 'Estética & bienestar' : 'Peluquería',
+        titulo: salonId === 'salon1' ? 'Estética & bienestar' : 'Peluquería & maquillaje',
         descripcion: serviciosEnSalon.map((service) => service.nombre).join(' · '),
         servicios: serviciosEnSalon.map((service) => service.nombre),
       } satisfies SalonOption
@@ -1199,7 +1207,18 @@ export default function ReservaTurnoPage() {
                       </span>
                     ) : null}
                     <h3>{service.nombre}</h3>
-                    <p>{service.descripcion}</p>
+                    <div className="service-preview-list">
+                      {service.previewItems.map((item) => (
+                        <span key={`${service.id}-${item}`} className="service-preview-pill">
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="service-preview-more">
+                      {service.previewOverflow > 0
+                        ? `Y ${service.previewOverflow === 1 ? 'otra opción' : `${service.previewOverflow} opciones más`}`
+                        : 'Y otras opciones'}
+                    </p>
                   </button>
                 ))}
               </div>
@@ -1307,7 +1326,7 @@ export default function ReservaTurnoPage() {
                   </div>
                 ) : null}
 
-                <div className={`zone-stack ${selectedComboId ? 'locked' : ''}`}>
+                <div className={`zone-stack ${selectedComboId ? 'locked' : ''} ${visibleCombos.length === 0 ? 'two-column' : ''}`}>
                   {visibleZones.map((zone) => {
                     const selected = selectedZoneIds.includes(zone.id)
                     return (
@@ -2575,6 +2594,43 @@ export default function ReservaTurnoPage() {
           text-align: left;
         }
 
+        .service-preview-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 14px;
+          max-width: 100%;
+        }
+
+        .service-preview-pill {
+          display: inline-flex;
+          align-items: center;
+          padding: 7px 10px;
+          border-radius: 9999px;
+          background: rgba(245,239,230,0.92);
+          border: 1px solid rgba(232,224,216,0.95);
+          font-family: var(--font-body);
+          font-size: 12px;
+          font-weight: 600;
+          line-height: 1;
+          color: var(--color-text-secondary);
+          white-space: nowrap;
+        }
+
+        .service-card.selected .service-preview-pill {
+          background: rgba(255,249,239,0.98);
+          border-color: rgba(197,160,89,0.28);
+          color: var(--color-primary);
+        }
+
+        .service-preview-more {
+          margin-top: auto !important;
+          padding-top: 14px;
+          font-size: 14px !important;
+          color: var(--color-secondary) !important;
+          font-weight: 600;
+        }
+
         .selection-layout {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2848,15 +2904,30 @@ export default function ReservaTurnoPage() {
           pointer-events: none;
         }
 
+        .zone-stack.two-column {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px;
+        }
+
+        .zone-stack.two-column .zone-card {
+          margin-bottom: 0;
+          min-height: 112px;
+        }
+
         .zone-left {
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           gap: 16px;
         }
 
         .zone-check {
           width: 22px;
           height: 22px;
+          min-width: 22px;
+          min-height: 22px;
+          flex: 0 0 22px;
+          margin-top: 2px;
           border-radius: 9999px;
           border: 1px solid rgba(168,152,128,0.5);
           display: inline-flex;
@@ -4381,6 +4452,10 @@ export default function ReservaTurnoPage() {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
 
+          .zone-stack.two-column {
+            grid-template-columns: 1fr;
+          }
+
           .success-screen {
             padding: 0;
           }
@@ -4513,6 +4588,10 @@ export default function ReservaTurnoPage() {
 
           .service-grid {
             grid-template-columns: 1fr 1fr;
+          }
+
+          .zone-stack.two-column {
+            grid-template-columns: 1fr;
           }
 
           .coupon-card {
