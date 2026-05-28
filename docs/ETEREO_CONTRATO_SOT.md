@@ -243,6 +243,22 @@ Generados por `JwtService.GenerateAccessToken(Usuario)`:
 - `subservicioId?: number`
 - `varianteId?: number`
 
+### 4.7.2 Publicaciones
+
+| Método | Ruta | Acceso |
+|---|---|---|
+| GET | `/publicaciones` | Anónimo\|[Authorize] |
+| POST | `/publicaciones` | Admin |
+| PATCH | `/publicaciones/{id}` | Admin |
+| PATCH | `/publicaciones/{id}/estado` | Admin |
+
+**Reglas de `GET /publicaciones`:**
+- Devuelve hasta 10 publicaciones.
+- Orden: `destacado DESC`, `fecha_desde DESC`.
+- Solo incluye publicaciones con `activo=true`, `fecha_desde <= hoy` y `fecha_hasta` nula o futura.
+- Anónimo: solo `visibilidad = Todos`.
+- Autenticado (Cliente, Admin u Operario): `visibilidad IN (Todos, SoloRegistrados)`.
+
 ### 4.8 Imputaciones & Catálogos
 
 | Método | Ruta | Acceso |
@@ -542,6 +558,30 @@ CodigoDescuentoDto {
 - No aparece en “mis cupones”.
 - Se valida y consume de forma separada a los cupones personales.
 
+### 5.6.2 Publicaciones
+
+```typescript
+// Requests
+CrearPublicacionRequest {
+  titulo: string; contenido?: string; imagenUrl?: string;
+  tipo: string; visibilidad: string; destacado: boolean;
+  fechaDesde: string; fechaHasta?: string
+}
+EditarPublicacionRequest {
+  titulo?: string; contenido?: string; imagenUrl?: string;
+  tipo?: string; visibilidad?: string; destacado?: boolean;
+  fechaDesde?: string; fechaHasta?: string
+}
+EstadoPublicacionRequest { activo: boolean }
+
+// Response
+PublicacionDto {
+  id: number; titulo: string; contenido?: string; imagenUrl?: string;
+  tipo: string; visibilidad: string; destacado: boolean;
+  fechaDesde: string; fechaHasta?: string; creadoEn: string
+}
+```
+
 ### 5.7 Imputaciones y Catálogos
 
 ```typescript
@@ -673,6 +713,8 @@ Salon:            Salon1 | Salon2 | Ambos
 EstadoTurno:      PendienteConfirmacion | Confirmado | Rechazado | Cancelado |
                   Multa | Ausente | Realizado | Impago | Publicidad
 TipoDescuento:    Porcentaje | MontoFijo
+TipoPublicacion:  Novedad | Promo | Aviso | Evento
+VisibilidadPublicacion: Todos | SoloRegistrados
 TipoImputacion:   Ingreso | Egreso
 TipoCategoria:    Ingreso | Egreso | Ambos
 OrigenImput:      Manual | Automatico
@@ -744,6 +786,8 @@ Categorías egreso:    Electricidad, Wi-Fi, Seguro, Alquiler Local, Comisión Op
 Config email:         recordatorio_dias_antes=1, postturno_horas_despues=2, activo=true
 Reglas descuento:     Depilación Láser → 3 zonas → 15%
                       Depilación Descartable → 3 zonas → 10%
+Publicaciones:        "Reservas online disponibles 🌸" y
+                      "Beneficio exclusivo para miembros ✨"
 Servicios/precios:    Ver DatabaseSeeder.cs (precios Marzo 2026)
 ```
 
@@ -786,6 +830,14 @@ Ver `ETEREO_BACKEND_SOT.md` sección 8 para la tabla completa de `ErrorCode` por
 |---|---|---|
 | `OPERARIA_NO_DISPONIBLE` | 409 | No hay operarias disponibles para ese horario y servicio |
 | `OPERARIA_NO_ASIGNADA` | 409 | Debés asignar una operaria antes de confirmar el turno |
+
+**Errores nuevos — Publicaciones:**
+| Código | Status | Mensaje |
+|---|---|---|
+| `PUBLICACION_NO_ENCONTRADA` | 404 | La publicación no existe |
+| `TIPO_INVALIDO` | 422 | El tipo debe ser Novedad, Promo, Aviso o Evento |
+| `VISIBILIDAD_INVALIDA` | 422 | La visibilidad debe ser Todos o SoloRegistrados |
+| `FECHA_INVALIDA` | 400 | `fechaHasta` no puede ser anterior a `fechaDesde` |
 
 Regla general de mapeo status:
 - `4xx` error de negocio → `400` si no hay código más específico
