@@ -308,7 +308,7 @@ Tipos de descuento:
   MontoFijo:  precio_final = precio_base - valor (mínimo 0)
 
 Solo clientes REGISTRADOS pueden usar cupones.
-Los anónimos no ven el paso de cupones en el wizard.
+Los anónimos no ven cupones personales, pero sí el paso de código promocional manual en el wizard.
 
 Cupones disponibles para el cliente: ordenados por fecha_hasta ASC
 (los que vencen antes, primero — estilo PedidosYa).
@@ -567,9 +567,13 @@ y el ProtectedRoute redirige a `/login` si no hay token.
 
 Página dedicada (no popup). Completamente responsive (mobile first).
 
-**Pasos actuales (6 + éxito, sin selección de operaria — el sistema la asigna):**
+**Pasos actuales (dinámicos + éxito, sin selección de operaria — el sistema la asigna):**
 ```
+Anónimo:
 Tus datos → Servicio → Selección → Horario → Cupón → Confirmar → Éxito
+
+Cliente registrado con perfil completo:
+Servicio → Selección → Horario → Cupón → Confirmar → Éxito
 ```
 
 Cambios de negocio ya reflejados en frontend:
@@ -613,12 +617,15 @@ Cambios de negocio ya reflejados en frontend:
 - Hoy renderiza un calendario mensual visual + panel derecho de horarios
 - Los días con disponibilidad se marcan con dot dorado y texto activo
 - Los horarios se agrupan por franja (`Mañana`, `Tarde`, `Noche`)
-- La demo actual sigue siendo mock y usa bloques de 30 minutos
+- Turno simple: consume `POST /turnos/disponibilidad-mes`
+- Sesión multi-zona: consume `POST /sesiones/disponibilidad-mes`
+- El frontend ya no hace una request por día del mes
 
 **Cupón:**
-- Si cliente autenticado: muestra cupones simulados + input manual
+- Si cliente autenticado: muestra cupones reales + input manual
 - Si invitado: solo input manual
 - El resumen actualiza en tiempo real
+- El frontend aclara que el beneficio se valida ahora y se consume al confirmar la reserva
 
 **Confirmar:**
 - Resumen completo del turno

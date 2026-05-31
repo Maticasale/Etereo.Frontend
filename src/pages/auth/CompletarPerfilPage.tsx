@@ -73,7 +73,7 @@ export default function CompletarPerfilPage() {
         return
       }
 
-      navigate('/mi-cuenta', { replace: true })
+      navigate('/mi-espacio', { replace: true })
     } catch (err) {
       setGlobalError(mapBackendError(getErrorCode(err), getErrorMessage(err)))
     } finally {

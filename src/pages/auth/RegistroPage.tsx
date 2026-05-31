@@ -93,7 +93,7 @@ export default function RegistroPage() {
       navigate('/?iniciar_reserva=1', { replace: true })
       return
     }
-    navigate('/mi-cuenta', { replace: true })
+    navigate('/mi-espacio', { replace: true })
   }
 
   const onSubmit = async (values: RegisterFormValues) => {

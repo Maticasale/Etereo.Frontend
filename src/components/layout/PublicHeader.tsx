@@ -17,13 +17,13 @@ export default function PublicHeader({ onReservar }: PublicHeaderProps) {
   const hideReserveCta = location.pathname === '/reservar'
 
   const accountTarget = usuario?.rol === 'Cliente'
-    ? '/mi-cuenta'
+    ? '/mi-espacio'
     : usuario?.rol === 'Admin' || usuario?.rol === 'Operario'
       ? '/panel'
       : '/login'
 
   const accountLabel = usuario?.rol === 'Cliente'
-    ? 'Mi cuenta'
+    ? 'Mi espacio'
     : usuario?.rol === 'Admin' || usuario?.rol === 'Operario'
       ? 'Ir al panel'
       : 'Ingresar'

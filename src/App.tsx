@@ -20,7 +20,7 @@ import { needsProfileCompletion } from '@/lib/authFlow'
 
 // Portal (cliente)
 import ReservaTurnoPage from '@/pages/portal/ReservaTurnoPage'
-import MiCuentaPage from '@/pages/portal/MiCuentaPage'
+import MiEspacioPage from '@/pages/portal/MiEspacioPage'
 import MisTurnosPage from '@/pages/portal/MisTurnosPage'
 import MisCuponesPage from '@/pages/portal/MisCuponesPage'
 import MiPerfilPage from '@/pages/portal/MiPerfilPage'
@@ -131,6 +131,9 @@ export default function App() {
           <Route element={<PublicLayout />}>
             <Route path="/" element={<LandingPage />} />
             <Route path="/reservar" element={<ReservaTurnoPage />} />
+            <Route element={<ProtectedRoute roles={['Cliente']} />}>
+              <Route path="/mi-espacio" element={<MiEspacioPage />} />
+            </Route>
           </Route>
 
           {/* ── Auth — layout propio completo, sin PublicHeader ── */}
@@ -148,7 +151,6 @@ export default function App() {
 
           {/* ── Rutas cliente autenticado ── */}
           <Route element={<ProtectedRoute roles={['Cliente']} />}>
-            <Route path="/mi-cuenta" element={<MiCuentaPage />} />
             <Route path="/mis-turnos" element={<MisTurnosPage />} />
             <Route path="/mis-cupones" element={<MisCuponesPage />} />
             <Route path="/mi-perfil" element={<MiPerfilPage />} />

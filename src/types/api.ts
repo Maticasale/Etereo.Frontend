@@ -140,6 +140,13 @@ export interface ReglaDescuentoDto {
   activo: boolean
 }
 
+export interface ReglaDescuentoSesionPublicaDto {
+  servicioId: number
+  nombreServicio: string
+  zonasMinimas: number
+  porcentajeDescuento: number
+}
+
 // Turnos y sesiones
 
 export type EstadoTurno =
@@ -190,6 +197,19 @@ export interface DisponibilidadSesionZonaRequest {
 export interface DisponibilidadSesionRequest {
   salon: 'Salon1' | 'Salon2'
   fecha: string
+  zonas: DisponibilidadSesionZonaRequest[]
+}
+
+export interface DisponibilidadMesTurnoRequest {
+  mes: string
+  subservicioId: number
+  varianteId?: number
+  duracionMin?: number
+}
+
+export interface DisponibilidadMesSesionRequest {
+  mes: string
+  salon: 'Salon1' | 'Salon2'
   zonas: DisponibilidadSesionZonaRequest[]
 }
 
@@ -273,6 +293,17 @@ export interface DisponibilidadDto {
   horariosDisponibles: string[]
 }
 
+export interface DisponibilidadDiaDto {
+  fecha: string
+  disponible: boolean
+  horariosDisponibles: string[]
+}
+
+export interface DisponibilidadMesDto {
+  mes: string
+  dias: DisponibilidadDiaDto[]
+}
+
 // Cupones
 
 export interface CuponDto {
@@ -334,6 +365,19 @@ export interface CodigoDescuentoDto {
   usosMaximos?: number
   usosActuales: number
   activo: boolean
+  creadoEn: string
+}
+
+export interface PublicacionDto {
+  id: number
+  titulo: string
+  contenido?: string
+  imagenUrl?: string
+  tipo: 'Novedad' | 'Promo' | 'Aviso' | 'Evento'
+  visibilidad: 'Todos' | 'SoloRegistrados'
+  destacado: boolean
+  fechaDesde: string
+  fechaHasta?: string
   creadoEn: string
 }
 

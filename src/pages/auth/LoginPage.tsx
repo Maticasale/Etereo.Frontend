@@ -130,7 +130,7 @@ export default function LoginPage() {
     if (usuario.rol === 'Admin' || usuario.rol === 'Operario') {
       navigate('/panel', { replace: true })
     } else {
-      navigate('/mi-cuenta', { replace: true })
+      navigate('/mi-espacio', { replace: true })
     }
   }
 

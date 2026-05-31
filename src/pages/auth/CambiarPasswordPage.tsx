@@ -54,7 +54,7 @@ export default function CambiarPasswordPage() {
       if (usuario?.rol === 'Admin' || usuario?.rol === 'Operario') {
         navigate('/panel', { replace: true })
       } else {
-        navigate('/mi-cuenta', { replace: true })
+        navigate('/mi-espacio', { replace: true })
       }
     } catch (err) {
       setGlobalError(mapBackendError(getErrorCode(err)))

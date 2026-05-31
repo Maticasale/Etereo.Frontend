@@ -1,10 +1,75 @@
 import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { ArrowDown, CalendarHeart, Clock3, Leaf, MapPin, Sparkles } from 'lucide-react'
+import { turnosApi } from '@/api/turnos'
+import { useAuthStore } from '@/store/authStore'
+import type { EstadoTurno, TurnoDto } from '@/types/api'
 import LandingReveal from './LandingReveal'
 
 interface HeroSectionProps {
   onReservar: () => void
+}
+
+const HERO_ACTIVE_TURNOS: EstadoTurno[] = ['PendienteConfirmacion', 'Confirmado']
+
+function getGreetingByHour(name: string) {
+  const hour = new Date().getHours()
+  if (hour < 12) return `Buenos días, ${name}`
+  if (hour < 20) return `Buenas tardes, ${name}`
+  return `Buenas noches, ${name}`
+}
+
+function formatHeroTurnoDate(value: string) {
+  return new Intl.DateTimeFormat('es-AR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(new Date(value))
+}
+
+function formatHeroTurnoTime(value: string) {
+  return new Intl.DateTimeFormat('es-AR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
+function getNextTurno(turnos: TurnoDto[]) {
+  const now = Date.now()
+  return [...turnos]
+    .filter(
+      (turno) =>
+        HERO_ACTIVE_TURNOS.includes(turno.estado) &&
+        new Date(turno.fechaHoraInicio).getTime() > now,
+    )
+    .sort(
+      (a, b) => new Date(a.fechaHoraInicio).getTime() - new Date(b.fechaHoraInicio).getTime(),
+    )[0]
+}
+
+const MOCK_CLIENT_HERO_TURNO: TurnoDto = {
+  id: 0,
+  salon: 'Salon1',
+  clienteId: 1,
+  nombreCliente: 'Matías',
+  operarioId: 1,
+  nombreOperario: 'A confirmar',
+  subservicioId: 1,
+  nombreSubservicio: 'Pack 3: Axilas + Cavado + Tira de cola',
+  nombreServicio: 'Depilación Láser',
+  fechaHoraInicio: new Date(new Date().getFullYear(), 5, 3, 10, 30).toISOString(),
+  duracionMin: 75,
+  estado: 'Confirmado',
+  precioBase: 29800,
+  creadoEn: new Date().toISOString(),
+  actualizadoEn: new Date().toISOString(),
+}
+
+const MOCK_CLIENT_HERO_COUPON = {
+  codigo: 'LASER20',
+  titulo: '20% de descuento en tu próxima sesión',
+  vencimiento: '15/06/2026',
 }
 
 function BotanicalBackdrop() {
@@ -128,6 +193,214 @@ function HeroEditorialCard({
   )
 }
 
+function HeroClientPanel({
+  turno,
+  hasRealTurno,
+}: {
+  turno: TurnoDto
+  hasRealTurno: boolean
+}) {
+  return (
+    <div
+      style={{
+        borderRadius: 36,
+        padding: 20,
+        background: 'linear-gradient(180deg, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.04) 100%)',
+        border: '1px solid rgba(255,255,255,0.12)',
+        boxShadow: '0 28px 54px rgba(18,10,6,0.22)',
+      }}
+    >
+      <div
+        style={{
+          borderRadius: 28,
+          minHeight: 520,
+          padding: 24,
+          background: `
+            radial-gradient(circle at 70% 18%, rgba(255,255,255,0.18) 0%, transparent 22%),
+            linear-gradient(180deg, rgba(248,244,238,0.18) 0%, rgba(255,255,255,0.04) 100%),
+            rgba(58,42,31,0.72)
+          `,
+          display: 'grid',
+          gridTemplateRows: 'auto auto 1fr',
+          gap: 16,
+        }}
+      >
+        <div
+          className="landing-premium-surface"
+          style={{
+            borderRadius: 28,
+            padding: 24,
+            background: 'linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.06) 100%)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            boxShadow: '0 18px 36px rgba(15,10,7,0.14)',
+          }}
+        >
+          <div
+            style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: '0.24em',
+              textTransform: 'uppercase',
+              color: 'rgba(197,160,89,0.9)',
+              marginBottom: 10,
+            }}
+          >
+            Próximo turno
+          </div>
+          <h3
+            style={{
+              fontFamily: 'var(--font-heading)',
+              fontSize: 34,
+              lineHeight: 1,
+              color: 'var(--color-tertiary)',
+              marginBottom: 12,
+            }}
+          >
+            {formatHeroTurnoDate(turno.fechaHoraInicio)}
+          </h3>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 14,
+              flexWrap: 'wrap',
+            }}
+          >
+            <div style={{ color: 'rgba(255,255,255,0.78)', fontSize: 15, lineHeight: 1.7 }}>
+              {formatHeroTurnoTime(turno.fechaHoraInicio)} hs · {turno.nombreServicio}
+              <br />
+              {turno.nombreSubservicio}
+            </div>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '8px 12px',
+                borderRadius: 999,
+                background:
+                  turno.estado === 'Confirmado'
+                    ? 'rgba(39,174,96,0.16)'
+                    : 'rgba(197,160,89,0.16)',
+                color: turno.estado === 'Confirmado' ? '#aef0c8' : '#f4d793',
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+              }}
+            >
+              {turno.estado === 'Confirmado' ? '✓ Confirmado' : '⏳ Pendiente'}
+            </span>
+          </div>
+          {!hasRealTurno ? (
+            <div
+              style={{
+                marginTop: 12,
+                fontSize: 12,
+                color: 'rgba(255,255,255,0.54)',
+              }}
+            >
+              Preview visual temporal mientras terminamos de poblar esta vista con tus datos reales.
+            </div>
+          ) : null}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div
+            style={{
+              borderRadius: 24,
+              padding: 22,
+              background: 'rgba(249,245,240,0.9)',
+              color: 'var(--color-primary)',
+            }}
+          >
+            <div
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.22em',
+                textTransform: 'uppercase',
+                color: 'rgba(44,31,20,0.48)',
+                marginBottom: 10,
+              }}
+            >
+              Beneficio disponible
+            </div>
+            <div
+              style={{
+                fontFamily: 'var(--font-heading)',
+                fontSize: 26,
+                lineHeight: 1.08,
+                marginBottom: 10,
+              }}
+            >
+              {MOCK_CLIENT_HERO_COUPON.codigo}
+            </div>
+            <div
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: 14,
+                lineHeight: 1.7,
+                color: 'rgba(44,31,20,0.72)',
+              }}
+            >
+              {MOCK_CLIENT_HERO_COUPON.titulo}
+              <br />
+              Vence {MOCK_CLIENT_HERO_COUPON.vencimiento}
+            </div>
+          </div>
+
+          <div
+            style={{
+              borderRadius: 24,
+              padding: 22,
+              background: 'rgba(27,18,13,0.52)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              color: 'var(--color-tertiary)',
+            }}
+          >
+            <div
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.22em',
+                textTransform: 'uppercase',
+                color: 'rgba(197,160,89,0.78)',
+                marginBottom: 10,
+              }}
+            >
+              Acceso rápido
+            </div>
+            <div
+              style={{
+                fontFamily: 'var(--font-heading)',
+                fontSize: 24,
+                lineHeight: 1.15,
+                marginBottom: 10,
+              }}
+            >
+              Todo tu espacio en un solo lugar.
+            </div>
+            <div
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: 14,
+                lineHeight: 1.7,
+                color: 'rgba(255,255,255,0.7)',
+              }}
+            >
+              Revisá turnos, beneficios y novedades del salón sin volver a la reserva cada vez.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ScrollCue({ visible }: { visible: boolean }) {
   return (
     <div
@@ -168,7 +441,21 @@ function ScrollCue({ visible }: { visible: boolean }) {
 
 export default function HeroSection({ onReservar }: HeroSectionProps) {
   const navigate = useNavigate()
+  const usuario = useAuthStore((state) => state.usuario)
   const [showCue, setShowCue] = useState(true)
+  const isClient = usuario?.rol === 'Cliente'
+  const heroName = usuario?.nombre?.trim() || 'Etereo'
+
+  const { data: turnosCliente } = useQuery({
+    queryKey: ['turnos', 'proximo', usuario?.id],
+    queryFn: turnosApi.getMisTurnos,
+    enabled: isClient,
+    staleTime: 2 * 60 * 1000,
+    retry: 1,
+  })
+
+  const proximoTurnoReal = isClient ? getNextTurno(turnosCliente ?? []) : undefined
+  const proximoTurno = proximoTurnoReal ?? (isClient ? MOCK_CLIENT_HERO_TURNO : undefined)
 
   useEffect(() => {
     const handleScroll = () => setShowCue(window.scrollY < 72)
@@ -215,127 +502,310 @@ export default function HeroSection({ onReservar }: HeroSectionProps) {
         className="grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] gap-12 lg:gap-10"
       >
         <div>
-          <LandingReveal delay={80}>
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 10,
-                borderRadius: 9999,
-                padding: '8px 14px',
-                marginBottom: 26,
-                background: 'rgba(255,255,255,0.08)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                color: 'rgba(255,255,255,0.76)',
-                fontFamily: 'var(--font-body)',
-                fontSize: 12,
-                fontWeight: 600,
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-              }}
-            >
-              <Sparkles size={14} color="#d5ae64" />
-              Belleza & bienestar en Rafaela
-            </div>
-          </LandingReveal>
+          {!isClient ? (
+            <>
+              <LandingReveal delay={80}>
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    borderRadius: 9999,
+                    padding: '8px 14px',
+                    marginBottom: 26,
+                    background: 'rgba(255,255,255,0.08)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    color: 'rgba(255,255,255,0.76)',
+                    fontFamily: 'var(--font-body)',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  <Sparkles size={14} color="#d5ae64" />
+                  Belleza & bienestar en Rafaela
+                </div>
+              </LandingReveal>
 
-          <LandingReveal delay={150}>
-            <div
-              style={{
-                fontFamily: 'var(--font-display)',
-                color: '#e6cc8f',
-                lineHeight: 0.92,
-                textShadow: '0 10px 42px rgba(0,0,0,0.28)',
-              }}
-              className="text-[76px] sm:text-[96px] lg:text-[138px]"
-            >
-              Etéreo
-            </div>
-          </LandingReveal>
+              <LandingReveal delay={150}>
+                <div
+                  style={{
+                    fontFamily: 'var(--font-display)',
+                    color: '#e6cc8f',
+                    lineHeight: 0.92,
+                    textShadow: '0 10px 42px rgba(0,0,0,0.28)',
+                  }}
+                  className="text-[76px] sm:text-[96px] lg:text-[138px]"
+                >
+                  Etéreo
+                </div>
+              </LandingReveal>
 
-          <LandingReveal delay={230}>
-            <p
-              style={{
-                marginTop: 18,
-                maxWidth: 640,
-                fontFamily: "'Cormorant Garamond', Georgia, serif",
-                fontStyle: 'italic',
-                fontWeight: 400,
-                color: 'rgba(255,255,255,0.86)',
-                lineHeight: 1.45,
-              }}
-              className="text-[24px] sm:text-[28px] lg:text-[34px]"
-            >
-              Un refugio de belleza, cuidado y bienestar pensado para que cada visita se sienta íntima, elegante y simple.
-            </p>
-          </LandingReveal>
+              <LandingReveal delay={230}>
+                <p
+                  style={{
+                    marginTop: 18,
+                    maxWidth: 640,
+                    fontFamily: "'Cormorant Garamond', Georgia, serif",
+                    fontStyle: 'italic',
+                    fontWeight: 400,
+                    color: 'rgba(255,255,255,0.86)',
+                    lineHeight: 1.45,
+                  }}
+                  className="text-[24px] sm:text-[28px] lg:text-[34px]"
+                >
+                  Un refugio de belleza, cuidado y bienestar pensado para que cada visita se sienta íntima, elegante y simple.
+                </p>
+              </LandingReveal>
 
-          <LandingReveal delay={300}>
-            <p
-              style={{
-                marginTop: 20,
-                maxWidth: 620,
-                fontFamily: 'var(--font-body)',
-                fontSize: 15,
-                lineHeight: 1.8,
-                color: 'rgba(255,255,255,0.68)',
-              }}
-            >
-              Te esperamos en Moreno 212 · 1A, Rafaela. Reservá online, descubrí nuestros servicios y conocé una experiencia de salón construida con detalle, calidez y resultados visibles desde el primer momento.
-            </p>
-          </LandingReveal>
+              <LandingReveal delay={300}>
+                <p
+                  style={{
+                    marginTop: 20,
+                    maxWidth: 620,
+                    fontFamily: 'var(--font-body)',
+                    fontSize: 15,
+                    lineHeight: 1.8,
+                    color: 'rgba(255,255,255,0.68)',
+                  }}
+                >
+                  Te esperamos en Moreno 212 · 1A, Rafaela. Reservá online, descubrí nuestros servicios y conocé una experiencia de salón construida con detalle, calidez y resultados visibles desde el primer momento.
+                </p>
+              </LandingReveal>
 
-          <LandingReveal delay={360}>
-            <div className="flex flex-col sm:flex-row gap-4 mt-10">
-              <button
-                onClick={onReservar}
-                className="landing-hero-primary"
-                style={{
-                  border: '1px solid rgba(224,191,128,0.18)',
-                  background: 'linear-gradient(135deg, #f6e5b8 0%, #dbb46d 42%, #b88237 100%)',
-                  color: '#2C1F14',
-                  borderRadius: 9999,
-                  padding: '17px 28px',
-                  fontFamily: 'var(--font-body)',
-                  fontSize: 13,
-                  fontWeight: 800,
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 10,
-                  boxShadow: '0 18px 34px rgba(99,67,20,0.26)',
-                  transition: 'transform 220ms ease, box-shadow 220ms ease, filter 220ms ease',
-                }}
-              >
-                <CalendarHeart size={18} strokeWidth={1.8} />
-                Reservar mi turno
-              </button>
+              <LandingReveal delay={360}>
+                <div className="flex flex-col sm:flex-row gap-4 mt-10">
+                  <button
+                    onClick={onReservar}
+                    className="landing-hero-primary"
+                    style={{
+                      border: '1px solid rgba(224,191,128,0.18)',
+                      background: 'linear-gradient(135deg, #f6e5b8 0%, #dbb46d 42%, #b88237 100%)',
+                      color: '#2C1F14',
+                      borderRadius: 9999,
+                      padding: '17px 28px',
+                      fontFamily: 'var(--font-body)',
+                      fontSize: 13,
+                      fontWeight: 800,
+                      letterSpacing: '0.12em',
+                      textTransform: 'uppercase',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 10,
+                      boxShadow: '0 18px 34px rgba(99,67,20,0.26)',
+                      transition: 'transform 220ms ease, box-shadow 220ms ease, filter 220ms ease',
+                    }}
+                  >
+                    <CalendarHeart size={18} strokeWidth={1.8} />
+                    Reservar mi turno
+                  </button>
 
-              <button
-                onClick={() => navigate('/login')}
-                className="landing-hero-secondary"
-                style={{
-                  border: '1px solid rgba(255,255,255,0.22)',
-                  background: 'rgba(255,255,255,0.06)',
-                  color: 'var(--color-tertiary)',
-                  borderRadius: 9999,
-                  padding: '17px 28px',
-                  fontFamily: 'var(--font-body)',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
-                  cursor: 'pointer',
-                  transition: 'transform 220ms ease, background 220ms ease, border-color 220ms ease',
-                }}
-              >
-                Ingresar
-              </button>
-            </div>
-          </LandingReveal>
+                  <button
+                    onClick={() => navigate('/login')}
+                    className="landing-hero-secondary"
+                    style={{
+                      border: '1px solid rgba(255,255,255,0.22)',
+                      background: 'rgba(255,255,255,0.06)',
+                      color: 'var(--color-tertiary)',
+                      borderRadius: 9999,
+                      padding: '17px 28px',
+                      fontFamily: 'var(--font-body)',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      letterSpacing: '0.12em',
+                      textTransform: 'uppercase',
+                      cursor: 'pointer',
+                      transition: 'transform 220ms ease, background 220ms ease, border-color 220ms ease',
+                    }}
+                  >
+                    Ingresar
+                  </button>
+                </div>
+              </LandingReveal>
+            </>
+          ) : (
+            <>
+              <LandingReveal delay={80}>
+                <div
+                  style={{
+                    fontFamily: "'Cormorant Garamond', Georgia, serif",
+                    fontStyle: 'italic',
+                    fontSize: 'clamp(26px, 3vw, 36px)',
+                    color: '#e6cc8f',
+                    lineHeight: 1.1,
+                  }}
+                >
+                  {getGreetingByHour(heroName)}
+                </div>
+              </LandingReveal>
+
+              <LandingReveal delay={150}>
+                <div
+                  style={{
+                    marginTop: 18,
+                    fontFamily: 'var(--font-heading)',
+                    fontSize: 'clamp(48px, 6vw, 86px)',
+                    lineHeight: 0.94,
+                    color: 'var(--color-tertiary)',
+                    maxWidth: 720,
+                  }}
+                >
+                  Tu próxima visita empieza acá.
+                </div>
+              </LandingReveal>
+
+              <LandingReveal delay={240}>
+                <p
+                  style={{
+                    marginTop: 18,
+                    maxWidth: 620,
+                    fontFamily: 'var(--font-body)',
+                    fontSize: 16,
+                    lineHeight: 1.82,
+                    color: 'rgba(255,255,255,0.72)',
+                  }}
+                >
+                  Gestioná tus turnos, reservá una nueva visita y seguí de cerca las novedades del salón desde tu espacio personal.
+                </p>
+              </LandingReveal>
+
+              <LandingReveal delay={300}>
+                {proximoTurno ? (
+                  <div
+                    style={{
+                      marginTop: 28,
+                      maxWidth: 540,
+                      borderRadius: 20,
+                      padding: 20,
+                      background: 'rgba(255,255,255,0.08)',
+                      border: '1px solid rgba(197,160,89,0.3)',
+                      backdropFilter: 'blur(8px)',
+                      WebkitBackdropFilter: 'blur(8px)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '8px 12px',
+                          borderRadius: 999,
+                          background:
+                            proximoTurno.estado === 'Confirmado'
+                              ? 'rgba(39,174,96,0.16)'
+                              : 'rgba(197,160,89,0.16)',
+                          color: proximoTurno.estado === 'Confirmado' ? '#aef0c8' : '#f4d793',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          letterSpacing: '0.12em',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        {proximoTurno.estado === 'Confirmado'
+                          ? '✓ Confirmado'
+                          : '⏳ Pendiente de confirmación'}
+                      </span>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          color: 'rgba(255,255,255,0.72)',
+                          fontSize: 12,
+                          letterSpacing: '0.12em',
+                          textTransform: 'uppercase',
+                          fontWeight: 700,
+                        }}
+                      >
+                        <MapPin size={14} />
+                        {proximoTurno.salon === 'Salon2' ? 'Peluquería & maquillaje' : 'Estética & bienestar'}
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        marginTop: 16,
+                        fontFamily: 'var(--font-heading)',
+                        fontSize: 'clamp(30px, 3.4vw, 40px)',
+                        lineHeight: 1.02,
+                        color: 'var(--color-tertiary)',
+                      }}
+                    >
+                      {formatHeroTurnoDate(proximoTurno.fechaHoraInicio)}
+                    </div>
+                    <div
+                      style={{
+                        marginTop: 8,
+                        fontSize: 17,
+                        color: 'rgba(255,255,255,0.8)',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {formatHeroTurnoTime(proximoTurno.fechaHoraInicio)} hs · {proximoTurno.nombreServicio}
+                    </div>
+                    <div
+                      style={{
+                        marginTop: 8,
+                        fontSize: 14,
+                        color: 'rgba(255,255,255,0.68)',
+                      }}
+                    >
+                      {proximoTurno.nombreSubservicio}
+                    </div>
+                    {proximoTurno.estado === 'PendienteConfirmacion' ? (
+                      <div
+                        style={{
+                          marginTop: 10,
+                          fontSize: 13,
+                          color: 'rgba(255,255,255,0.66)',
+                        }}
+                      >
+                        Te avisamos por WhatsApp
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p
+                    style={{
+                      marginTop: 28,
+                      fontSize: 16,
+                      color: 'rgba(255,255,255,0.6)',
+                    }}
+                  >
+                    No tenés turnos próximos.
+                  </p>
+                )}
+              </LandingReveal>
+
+              <LandingReveal delay={380}>
+                <div className="flex flex-col sm:flex-row gap-4 mt-10">
+                  <button
+                    onClick={() => navigate('/mi-espacio')}
+                    className="landing-hero-secondary"
+                    style={{
+                      border: '1px solid rgba(255,255,255,0.22)',
+                      background: 'rgba(255,255,255,0.06)',
+                      color: 'var(--color-tertiary)',
+                      borderRadius: 9999,
+                      padding: '17px 28px',
+                      fontFamily: 'var(--font-body)',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      letterSpacing: '0.12em',
+                      textTransform: 'uppercase',
+                      cursor: 'pointer',
+                      transition: 'transform 220ms ease, background 220ms ease, border-color 220ms ease',
+                    }}
+                  >
+                    Ver mi Espacio →
+                  </button>
+                </div>
+              </LandingReveal>
+            </>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-12">
             {[
@@ -387,126 +857,130 @@ export default function HeroSection({ onReservar }: HeroSectionProps) {
         </div>
 
         <LandingReveal delay={220} className="relative">
-          <div
-            style={{
-              borderRadius: 36,
-              padding: 20,
-              background: 'linear-gradient(180deg, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.04) 100%)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              boxShadow: '0 28px 54px rgba(18,10,6,0.22)',
-            }}
-          >
+          {isClient && proximoTurno ? (
+            <HeroClientPanel turno={proximoTurno} hasRealTurno={Boolean(proximoTurnoReal)} />
+          ) : (
             <div
               style={{
-                borderRadius: 28,
-                minHeight: 520,
-                padding: 22,
-                background: `
-                  radial-gradient(circle at 70% 18%, rgba(255,255,255,0.18) 0%, transparent 22%),
-                  linear-gradient(180deg, rgba(248,244,238,0.18) 0%, rgba(255,255,255,0.04) 100%),
-                  rgba(58,42,31,0.72)
-                `,
-                display: 'grid',
-                alignContent: 'space-between',
-                gap: 18,
+                borderRadius: 36,
+                padding: 20,
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.04) 100%)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                boxShadow: '0 28px 54px rgba(18,10,6,0.22)',
               }}
             >
-              <HeroEditorialCard
-                eyebrow="Ritual de bienvenida"
-                title="Una primera impresión más cálida, sofisticada y memorable."
-                body="Queremos que la experiencia digital transmita la misma calma y atención al detalle que se vive dentro del salón."
-              />
+              <div
+                style={{
+                  borderRadius: 28,
+                  minHeight: 520,
+                  padding: 22,
+                  background: `
+                    radial-gradient(circle at 70% 18%, rgba(255,255,255,0.18) 0%, transparent 22%),
+                    linear-gradient(180deg, rgba(248,244,238,0.18) 0%, rgba(255,255,255,0.04) 100%),
+                    rgba(58,42,31,0.72)
+                  `,
+                  display: 'grid',
+                  alignContent: 'space-between',
+                  gap: 18,
+                }}
+              >
+                <HeroEditorialCard
+                  eyebrow="Bienvenida"
+                  title="Una primera impresión más cálida, sofisticada y memorable."
+                  body="Queremos que la experiencia digital transmita la misma calma y atención al detalle que se vive dentro del salón."
+                />
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div
-                  style={{
-                    borderRadius: 24,
-                    padding: 22,
-                    background: 'rgba(249,245,240,0.88)',
-                    color: 'var(--color-primary)',
-                  }}
-                >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div
                     style={{
-                      fontFamily: 'var(--font-body)',
-                      fontSize: 11,
-                      fontWeight: 700,
-                      letterSpacing: '0.22em',
-                      textTransform: 'uppercase',
-                      color: 'rgba(44,31,20,0.48)',
-                      marginBottom: 10,
+                      borderRadius: 24,
+                      padding: 22,
+                      background: 'rgba(249,245,240,0.88)',
+                      color: 'var(--color-primary)',
                     }}
                   >
-                    Estilo Etereo
+                    <div
+                      style={{
+                        fontFamily: 'var(--font-body)',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        letterSpacing: '0.22em',
+                        textTransform: 'uppercase',
+                        color: 'rgba(44,31,20,0.48)',
+                        marginBottom: 10,
+                      }}
+                    >
+                      Estilo Etereo
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: 'var(--font-heading)',
+                        fontSize: 25,
+                        lineHeight: 1.12,
+                        marginBottom: 10,
+                      }}
+                    >
+                      Belleza que se siente serena.
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: 'var(--font-body)',
+                        fontSize: 14,
+                        lineHeight: 1.7,
+                        color: 'rgba(44,31,20,0.72)',
+                      }}
+                    >
+                      Tonos cálidos, curvas suaves y composición más editorial para salir del look genérico.
+                    </div>
                   </div>
-                  <div
-                    style={{
-                      fontFamily: 'var(--font-heading)',
-                      fontSize: 25,
-                      lineHeight: 1.12,
-                      marginBottom: 10,
-                    }}
-                  >
-                    Belleza que se siente serena.
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: 'var(--font-body)',
-                      fontSize: 14,
-                      lineHeight: 1.7,
-                      color: 'rgba(44,31,20,0.72)',
-                    }}
-                  >
-                    Tonos cálidos, curvas suaves y composición más editorial para salir del look genérico.
-                  </div>
-                </div>
 
-                <div
-                  style={{
-                    borderRadius: 24,
-                    padding: 22,
-                    background: 'rgba(27,18,13,0.52)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    color: 'var(--color-tertiary)',
-                  }}
-                >
                   <div
                     style={{
-                      fontFamily: 'var(--font-body)',
-                      fontSize: 11,
-                      fontWeight: 700,
-                      letterSpacing: '0.22em',
-                      textTransform: 'uppercase',
-                      color: 'rgba(197,160,89,0.78)',
-                      marginBottom: 10,
+                      borderRadius: 24,
+                      padding: 22,
+                      background: 'rgba(27,18,13,0.52)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      color: 'var(--color-tertiary)',
                     }}
                   >
-                    Promesa
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: 'var(--font-heading)',
-                      fontSize: 22,
-                      lineHeight: 1.15,
-                      marginBottom: 10,
-                    }}
-                  >
-                    Cuidar cada detalle, también online.
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: 'var(--font-body)',
-                      fontSize: 14,
-                      lineHeight: 1.7,
-                      color: 'rgba(255,255,255,0.7)',
-                    }}
-                  >
-                    La landing no solo informa: marca el tono de la marca antes de la reserva.
+                    <div
+                      style={{
+                        fontFamily: 'var(--font-body)',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        letterSpacing: '0.22em',
+                        textTransform: 'uppercase',
+                        color: 'rgba(197,160,89,0.78)',
+                        marginBottom: 10,
+                      }}
+                    >
+                      Promesa
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: 'var(--font-heading)',
+                        fontSize: 22,
+                        lineHeight: 1.15,
+                        marginBottom: 10,
+                      }}
+                    >
+                      Cuidar cada detalle, también online.
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: 'var(--font-body)',
+                        fontSize: 14,
+                        lineHeight: 1.7,
+                        color: 'rgba(255,255,255,0.7)',
+                      }}
+                    >
+                      La landing no solo informa: marca el tono de la marca antes de la reserva.
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </LandingReveal>
       </div>
 

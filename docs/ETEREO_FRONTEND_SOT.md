@@ -2,7 +2,7 @@
 
 > Documento técnico maestro del frontend. Refleja el diseño acordado del sistema de gestión de la estética Etereo.
 > Combina estado actual del código + comportamiento objetivo cuando un módulo todavía no fue implementado por completo.
-> Última actualización: Mayo 2026 — v9: auth de cliente extendida (registro, forgot/reset, cambio obligatorio, completar perfil post-Google) y wizard público `/reservar` refinado visualmente con pantalla de éxito alineada al HTML aprobado.
+> Última actualización: Mayo 2026 — v10: `/reservar` modularizado y alineado al contrato real (disponibilidad mensual, reglas públicas de descuento, pasos dinámicos para cliente completo) + área cliente `/mi-espacio`.
 
 ---
 
@@ -123,6 +123,8 @@ etereo-frontend/
 │   │   ├── operarios.ts
 │   │   ├── turnos.ts
 │   │   ├── cupones.ts
+│   │   ├── reglasDescuentoSesion.ts
+│   │   ├── publicaciones.ts
 │   │   ├── imputaciones.ts
 │   │   ├── emails.ts
 │   │   ├── calificaciones.ts
@@ -144,7 +146,8 @@ etereo-frontend/
 │   │   └── shared/
 │   │       ├── RolGuard.tsx        — Renderiza según rol del usuario [Implementado]
 │   │       ├── PageHeader.tsx      — Encabezado simple reutilizable [Implementado]
-│   │       └── ReservaTurnoModal.tsx — Modal de entrada al flujo de reserva [Implementado]
+│   │       ├── ReservaTurnoModal.tsx — Modal de entrada al flujo de reserva [Implementado]
+│   │       └── PublicacionesSalon.tsx — Bloque compartido de novedades del salón [Implementado]
 │   │
 │   ├── hooks/
 │   │   ├── useAuth.ts
@@ -167,7 +170,9 @@ etereo-frontend/
 │   │   │   ├── CambiarPasswordPage.tsx — Cambio obligatorio de contraseña en primer ingreso [Implementado]
 │   │   │   └── CompletarPerfilPage.tsx — Pantalla post-Google para completar teléfono/sexo [Implementado]
 │   │   ├── portal/                 — Vistas del cliente (público)
-│   │   │   ├── ReservaTurnoPage.tsx  — Wizard público de reserva, conectado parcialmente al backend real [Implementado]
+│   │   │   ├── ReservaTurnoPage.tsx  — Wrapper público del wizard de reserva [Implementado]
+│   │   │   ├── reserva/              — Submódulo del wizard (/reservar) con hooks, utils y componentes [Implementado]
+│   │   │   ├── MiEspacioPage.tsx     — Home privada del cliente con hero, próximo turno, cupones y publicaciones [Implementado]
 │   │   │   ├── MisTurnosPage.tsx     — Ruta existente, contenido placeholder [Parcial]
 │   │   │   ├── MisCuponesPage.tsx    — Ruta existente, contenido placeholder [Parcial]
 │   │   │   └── MiPerfilPage.tsx      — Ruta existente, contenido placeholder [Parcial]
@@ -305,6 +310,7 @@ El Sidebar filtra automáticamente los items del menú según el rol del usuario
 |---|---|---|
 | `/` | `LandingPage` | Público |
 | `/reservar` | `ReservaTurnoPage` | Público |
+| `/mi-espacio` | `MiEspacioPage` | Cliente |
 | `/mis-turnos` | `MisTurnosPage` | Cliente |
 | `/mis-cupones` | `MisCuponesPage` | Cliente |
 | `/mi-perfil` | `MiPerfilPage` | Cliente |
@@ -347,24 +353,29 @@ El Sidebar filtra automáticamente los items del menú según el rol del usuario
 > Estado: **Implementado**
 >
 > La ruta `/reservar` ya no es placeholder: hoy existe un wizard público navegable e interactivo en React.
-> Su estado actual es **integración parcial real**: ya consume catálogo, disponibilidad y creación de reserva contra backend, aunque todavía faltan ajustes finales de endurecimiento y módulos cliente posteriores.
+> Su estado actual es **integración real activa**: ya consume catálogo, disponibilidad simple/mensual, disponibilidad de sesiones, reglas públicas de descuento, cupones, códigos de descuento y creación real de reserva contra backend.
 
 ### Flujo actual implementado en `ReservaTurnoPage`
 
 ```
-Paso 1 — Tus datos
-  → Nombre, apellido, teléfono, email opcional
-  → Sexo obligatorio: Femenino | Masculino
-  → El sexo se pide al inicio para filtrar correctamente salones/servicios
+Usuario anónimo
+  Paso 1 — Tus datos
+    → Nombre, apellido, teléfono, email opcional
+    → Sexo obligatorio: Femenino | Masculino
+    → El sexo se pide al inicio para filtrar correctamente salones/servicios
 
-Paso 2 — Servicio
+Usuario registrado con perfil completo
+  → El wizard arranca directamente en Servicio
+  → Los datos salen de authStore.usuario
+
+Paso Servicio
   → Selector de salón con cards editoriales grandes
   → Si sexo = Masculino, Salón 2 no se muestra
   → El catálogo sale de `GET /servicios`
   → Luego se elige el servicio dentro del salón seleccionado
   → En este paso no se muestra todavía el resumen lateral
 
-Paso 3 — Selección
+Paso Selección
   → Usa subservicios / packs / variantes reales del servicio elegido
   → Columna izquierda: packs o combos activos
   → Columna derecha: opciones individuales relevantes para el sexo ya elegido en Paso 1
@@ -373,24 +384,25 @@ Paso 3 — Selección
       - la columna de zonas queda atenuada/bloqueada
       - aparece CTA "Deseleccionar combo"
   → Si se eligen 3 o más zonas individuales:
-      - se aplica descuento automático visible según el servicio (ej. Láser 15%, Descartable 10%)
+      - se aplica descuento automático visible según `GET /reglas-descuento-sesion/publicas`
       - aparece banner visual de descuento aplicado
 
-Paso 4 — Horario
+Paso Horario
   → Calendario mensual visual
-  → Consulta disponibilidad real por mes
-  → Turno simple → `GET /turnos/disponibilidad`
-  → Sesión multi-zona → `POST /sesiones/disponibilidad`
+  → Consulta disponibilidad real por mes con **una sola request por mes**
+  → Turno simple → `POST /turnos/disponibilidad-mes`
+  → Sesión multi-zona → `POST /sesiones/disponibilidad-mes`
   → Elección de día primero, luego horarios del día
   → El botón siguiente solo se habilita cuando hay día + hora seleccionados
 
-Paso 5 — Cupón
+Paso Cupón
   → Si usuario autenticado: `GET /cupones/disponibles`
   → Si usuario invitado: solo ingreso manual de código
   → Código manual: `GET /codigos-descuento/validar/{codigo}`
   → El resumen se recalcula en vivo
+  → El frontend aclara que el beneficio se valida ahora, pero se consume recién al confirmar la reserva
 
-Paso 6 — Confirmar
+Paso Confirmar
   → Resumen final de salón, servicio, selección, fecha/hora, duración y total
   → Turno simple: `POST /turnos`
   → Sesión multi-zona: `POST /sesiones`
@@ -401,11 +413,13 @@ Paso 6 — Confirmar
 ### Reglas de estado visibles ya implementadas en UI
 
 - No hay selecciones iniciales prearmadas en el flujo.
+- Ya no quedan datos hardcodeados de ejemplo en el paso de datos.
 - El botón `Siguiente` se habilita solo cuando el paso actual está completo.
 - Si el usuario vuelve un paso atrás, se limpia el estado del paso abandonado para no arrastrar selecciones inválidas.
 - El patrón visual `no seleccionado / seleccionado / bloqueado` está unificado progresivamente entre cards de salón, servicios, combos, zonas y slots.
 - El resumen lateral aparece a partir de la selección real del turno; no en el primer paso de datos/servicio.
 - La pantalla de éxito no usa ya una variante libre: sigue la composición aprobada en HTML como fuente de verdad visual.
+- El módulo fue refactorizado internamente a `src/pages/portal/reserva/` con hooks, componentes y utils, manteniendo la misma UI aprobada.
 
 ### Alcance actual vs pendiente
 
@@ -414,9 +428,11 @@ Paso 6 — Confirmar
 - Wizard interactivo de 6 pasos + pantalla de éxito
 - Entry anónimo y autenticado
 - Filtro inicial por sexo en UI
+- Salteo automático del paso “Tus datos” para cliente registrado con perfil completo
 - Ocultamiento de Salón 2 para sexo masculino
 - Catálogo real desde `GET /servicios`
-- Disponibilidad real simple y de sesión
+- Disponibilidad mensual real simple y de sesión
+- Reglas automáticas de descuento desde backend
 - Aplicación de cupones del cliente y códigos de descuento manuales
 - Creación real vía `POST /turnos` y `POST /sesiones`
 - Resumen lateral y resumen mobile
@@ -749,7 +765,7 @@ src/components/layout/
 src/pages/public/
   └── LandingPage.tsx        — página principal pública
 src/pages/public/landing/
-  ├── HeroSection.tsx        — 100vh, hero oscuro, botánicas SVG, wordmark + CTAs
+  ├── HeroSection.tsx        — 100vh, hero oscuro con variante anónima y variante cliente logueado
   ├── ServiciosSection.tsx   — grid de servicios con datos reales del API
   ├── CalificacionesSection.tsx — promedio + reviews + "Por qué elegirnos"
   └── FooterSection.tsx      — marca, navegación, contacto, copyright
@@ -757,6 +773,7 @@ src/pages/public/landing/
 src/api/servicios.ts         — getServicios() implementado (anónimo)
 src/api/turnos.ts            — disponibilidad simple, disponibilidad de sesión, crear turno, crear sesión
 src/api/cupones.ts           — cupones del cliente + validación de códigos de descuento
+src/api/publicaciones.ts     — publicaciones del salón, visibles según sesión
 src/api/estadisticas.ts      — helper admin-only + TODO para endpoint público de calificaciones
 ```
 
@@ -773,8 +790,12 @@ src/api/estadisticas.ts      — helper admin-only + TODO para endpoint público
 
 - `position: fixed`, full-width, con transición de ocultamiento/aparición según dirección del scroll.
 - Cambia entre una variante más translúcida y otra más sólida/blurred según profundidad de scroll.
-- Desktop (`≥ sm`): botón ghost `[Ingresar]` + botón dorado `[Reservar turno]`.
-- Mobile (`< sm`): link texto "Ingresar" + botón compacto dorado "Reservar".
+- Desktop (`≥ sm`): CTA de cuenta dinámico + botón dorado `[Reservar turno]`.
+- Mobile (`< sm`): CTA de cuenta dinámico + botón compacto dorado "Reservar".
+- Estado de cuenta:
+  - anónimo → `Ingresar`
+  - cliente → `Mi espacio`
+  - admin/operario → `Ir al panel`
 - Excepción importante:
   - en la ruta `/reservar` el CTA `Reservar turno` se oculta para no redundar dentro del propio wizard.
   - además puede ocultarse por evento `etereo:public-header-visible` cuando una pantalla pública necesita tomar todo el foco visual.
@@ -784,9 +805,16 @@ src/api/estadisticas.ts      — helper admin-only + TODO para endpoint público
 #### HeroSection
 - `minHeight: 100vh`, `background: linear-gradient(#5a4530 → #4A3728 → #2a1d12)`.
 - SVG botánico inline (dos ramas, izquierda + derecha), mismo patrón que LoginPage, opacidad 0.38.
-- Wordmark "etereo" Great Vibes 64px mobile / 96px desktop, `color: #C5A059`.
-- Tagline Playfair Display italic: "Belleza, cuidado y bienestar en San Francisco".
-- Botones pill: `[Reservar mi turno]` (dorado) + `[Ingresar]` (ghost blanco). `flex-col sm:flex-row`.
+- Estado anónimo:
+  - mantiene el wordmark "Etéreo", tagline editorial y botones `[Reservar mi turno]` + `[Ingresar]`.
+- Estado cliente logueado:
+  - saludo según hora local (`Buenos días / tardes / noches, {nombre}`)
+  - query `GET /turnos/mis-turnos` con `staleTime: 2 min`
+  - card compacta del próximo turno si existe:
+    - `Confirmado` → badge verde
+    - `PendienteConfirmacion` → badge dorado + texto "Te avisamos por WhatsApp"
+  - si no hay próximo turno: mensaje muted sin card
+  - CTA principal visible: `[Ver mi Espacio →]`
 - Scroll indicator SVG con `@keyframes heroScrollBounce`. Desaparece al scrollear >80px.
 
 #### ServiciosSection
@@ -815,6 +843,9 @@ src/api/estadisticas.ts      — helper admin-only + TODO para endpoint público
 <Route element={<PublicLayout />}>
   <Route path="/" element={<LandingPage />} />
   <Route path="/reservar" element={<ReservaTurnoPage />} />
+  <Route element={<ProtectedRoute roles={['Cliente']} />}>
+    <Route path="/mi-espacio" element={<MiEspacioPage />} />
+  </Route>
 </Route>
 
 // Auth — layout visual propio, SIN PublicHeader
@@ -831,6 +862,75 @@ LoginPage tiene layout split 2 columnas propio; va fuera del PublicLayout.
 1. `/login?redirect=reserva` → login → `navigate('/?iniciar_reserva=1', { replace })`
 2. `LandingPage` detecta `?iniciar_reserva=1` en `useEffect` → `navigate('/reservar', { replace })`
 3. `ReservaTurnoPage` carga. Compatible con `PostAuthRedirectHandler` (safety-net en App.tsx).
+4. Si el cliente inicia sesión sin venir desde reserva:
+   - Login / Registro / CompletarPerfil / CambiarPassword redirigen a `/mi-espacio`.
+
+## 15. Módulo /mi-espacio
+
+> Estado: **Implementado**
+
+`/mi-espacio` es la home privada del cliente autenticado. Vive dentro del `PublicLayout` para conservar el mismo universo visual del sitio público, pero con contenido personalizado.
+
+### Secciones
+
+- Hero oscuro personal:
+  - saludo con el nombre del cliente
+  - mensaje cálido según horario
+  - CTA `Reservar nuevo turno`
+- Próximo turno:
+  - usa `GET /turnos/mis-turnos`
+  - prioriza el primer turno futuro en estado `PendienteConfirmacion` o `Confirmado`
+  - muestra lista compacta de otros turnos próximos si existen
+  - fallback elegante si no hay reservas futuras
+- Accesos rápidos:
+  - `Mis Turnos`
+  - `Mis Cupones`
+  - `Mi Perfil`
+- Cupones destacados:
+  - usa `GET /cupones/disponibles`
+  - renderiza estilo voucher solo si hay datos
+- Último servicio:
+  - toma el turno más reciente en estado `Realizado`
+  - si no existe, no renderiza
+- Publicaciones:
+  - integra el componente compartido `PublicacionesSalon`
+  - cliente autenticado ve también publicaciones `SoloRegistrados`
+
+## 16. Publicaciones del salón
+
+> Estado: **Implementado**
+
+### API
+
+- `src/api/publicaciones.ts`
+- Query: `GET /publicaciones`
+- `staleTime: 5 min`
+- La visibilidad depende del JWT:
+  - anónimo → solo `Todos`
+  - cliente → `Todos` + `SoloRegistrados`
+
+### Tipo
+
+- `PublicacionDto` agregado en `src/types/api.ts`
+
+### Componente compartido
+
+- `src/components/shared/PublicacionesSalon.tsx`
+- Props:
+  - `title?: string`
+  - `maxItems?: number`
+- Comportamiento:
+  - si está cargando, hay error o no hay publicaciones: no renderiza nada
+  - badges por tipo (`Novedad`, `Promo`, `Aviso`, `Evento`)
+  - badge adicional "Exclusivo para miembros" cuando aplica y el cliente está logueado
+  - si `destacado = true`, dibuja borde superior dorado
+
+### Integración
+
+- `LandingPage`
+  - aparece entre `ServiciosSection` y `CalificacionesSection`
+- `/mi-espacio`
+  - aparece al final de la home privada
 
 ### TODO pendiente de Backend
 

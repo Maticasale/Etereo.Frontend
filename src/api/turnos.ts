@@ -3,6 +3,9 @@ import type {
   CrearSesionRequest,
   CrearTurnoRequest,
   DisponibilidadDto,
+  DisponibilidadMesDto,
+  DisponibilidadMesSesionRequest,
+  DisponibilidadMesTurnoRequest,
   DisponibilidadSesionRequest,
   SesionDto,
   TurnoDto,
@@ -18,6 +21,11 @@ export const turnosApi = {
       .get<{ data: DisponibilidadDto }>(`${TURNOS_BASE}/disponibilidad`, { params: query })
       .then((r) => r.data.data),
 
+  getDisponibilidadMes: (data: DisponibilidadMesTurnoRequest): Promise<DisponibilidadMesDto> =>
+    apiClient
+      .post<{ data: DisponibilidadMesDto }>(`${TURNOS_BASE}/disponibilidad-mes`, data)
+      .then((r) => r.data.data),
+
   crearTurno: (data: CrearTurnoRequest): Promise<TurnoDto> =>
     apiClient.post<{ data: TurnoDto }>(TURNOS_BASE, data).then((r) => r.data.data),
 
@@ -28,6 +36,11 @@ export const turnosApi = {
 export const sesionesApi = {
   getDisponibilidad: (data: DisponibilidadSesionRequest): Promise<DisponibilidadDto> =>
     apiClient.post<{ data: DisponibilidadDto }>(`${SESIONES_BASE}/disponibilidad`, data).then((r) => r.data.data),
+
+  getDisponibilidadMes: (data: DisponibilidadMesSesionRequest): Promise<DisponibilidadMesDto> =>
+    apiClient
+      .post<{ data: DisponibilidadMesDto }>(`${SESIONES_BASE}/disponibilidad-mes`, data)
+      .then((r) => r.data.data),
 
   crearSesion: (data: CrearSesionRequest): Promise<SesionDto> =>
     apiClient.post<{ data: SesionDto }>(SESIONES_BASE, data).then((r) => r.data.data),

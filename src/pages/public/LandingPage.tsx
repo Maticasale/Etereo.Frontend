@@ -17,6 +17,7 @@ import HeroSection from './landing/HeroSection'
 import ServiciosSection from './landing/ServiciosSection'
 import CalificacionesSection from './landing/CalificacionesSection'
 import FooterSection from './landing/FooterSection'
+import PublicacionesSalon from '@/components/shared/PublicacionesSalon'
 import type { PublicOutletContext } from '@/components/layout/PublicLayout'
 
 export default function LandingPage() {
@@ -38,6 +39,7 @@ export default function LandingPage() {
     <main>
       <HeroSection onReservar={onReservar} />
       <ServiciosSection />
+      <PublicacionesSalon title="Novedades del salón" maxItems={3} />
       <CalificacionesSection />
       <FooterSection onReservar={onReservar} />
     </main>
