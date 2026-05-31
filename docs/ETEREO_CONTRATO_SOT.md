@@ -2,7 +2,7 @@
 
 > Fuente de verdad compartida entre Backend (.NET Core) y Frontend Web (React).
 > Define el contrato de API, modelos, enums y convenciones de nombrado.
-> Última actualización: Mayo 2026 — v10: disponibilidad de operarias rediseñada con plantilla semanal base, excepciones mensuales, múltiples bloques por día y calendario consolidado.
+> Última actualización: Mayo 2026 — v11: consumo diferido de descuentos al confirmar, disponibilidad mensual optimizada y reglas públicas de descuento de sesión.
 
 ---
 
@@ -154,6 +154,7 @@ Generados por `JwtService.GenerateAccessToken(Usuario)`:
 | GET | `/servicios` | Anónimo — filtra subservicios por sexo del cliente autenticado |
 | GET | `/servicios/estado-configuracion` | Admin |
 | GET | `/servicios/{id}` | Anónimo |
+| GET | `/reglas-descuento-sesion/publicas` | Anónimo |
 | POST | `/servicios` | Admin |
 | PUT | `/servicios/{id}` | Admin |
 | PATCH | `/servicios/{id}/estado` | Admin |
@@ -185,12 +186,14 @@ Generados por `JwtService.GenerateAccessToken(Usuario)`:
 |---|---|---|
 | POST | `/sesiones` | Anónimo\|[Authorize] |
 | POST | `/sesiones/disponibilidad` | Anónimo |
+| POST | `/sesiones/disponibilidad-mes` | Anónimo |
 | GET | `/sesiones/{id}` | Admin\|Operario\|Cliente propio |
 | POST | `/turnos` | Anónimo\|[Authorize] |
 | GET | `/turnos` | Admin\|Operario |
 | GET | `/turnos/{id}` | Admin\|Operario\|Cliente propio |
 | GET | `/turnos/mis-turnos` | Cliente |
 | GET | `/turnos/disponibilidad` | Anónimo |
+| POST | `/turnos/disponibilidad-mes` | Anónimo |
 | POST | `/turnos/{id}/confirmar` | Admin\|Operario |
 | POST | `/turnos/{id}/rechazar` | Admin\|Operario |
 | POST | `/turnos/{id}/cancelar` | Admin\|Operario\|Cliente propio |
@@ -210,6 +213,17 @@ Generados por `JwtService.GenerateAccessToken(Usuario)`:
 `POST /sesiones/disponibilidad` usa body:
 - `salon: "Salon1" | "Salon2"`
 - `fecha: string`
+- `zonas: { subservicioId: number; varianteId?: number }[]`
+
+`POST /turnos/disponibilidad-mes` usa body:
+- `mes: string` (`YYYY-MM`)
+- `subservicioId: number`
+- `varianteId?: number`
+- `duracionMin?: number`
+
+`POST /sesiones/disponibilidad-mes` usa body:
+- `mes: string` (`YYYY-MM`)
+- `salon: "Salon1" | "Salon2"`
 - `zonas: { subservicioId: number; varianteId?: number }[]`
 
 ### 4.7 Cupones
@@ -460,6 +474,8 @@ AsignarOperariaRequest    { operarioId: number }
 RechazarTurnoRequest      { motivoRechazo: string }
 RealizarTurnoRequest      { metodoPagoId: number; precioFinal: number }
 TurnosDisponibilidadQuery { fecha: string; subservicioId: number; varianteId?: number; duracionMin?: number }
+DisponibilidadMesTurnoRequest { mes: string; subservicioId: number; varianteId?: number; duracionMin?: number }
+DisponibilidadMesSesionRequest { mes: string; salon: string; zonas: { subservicioId: number; varianteId?: number }[] }
 
 // Responses
 TurnoDto {
@@ -479,6 +495,11 @@ SesionDto {
 SlotOcupadoDto    { inicio: string; fin: string; estado: string }
 DisponibilidadDto { disponible: boolean; motivoNoDisponible?: string;
                     slotsOcupados: SlotOcupadoDto[]; horariosDisponibles: string[] }
+DisponibilidadMesDto { mes: string; dias: DisponibilidadDiaDto[] }
+DisponibilidadDiaDto { fecha: string; disponible: boolean; horariosDisponibles: string[] }
+ReglaDescuentoSesionPublicaDto {
+  servicioId: number; nombreServicio: string; zonasMinimas: number; porcentajeDescuento: number
+}
 ```
 
 **Reglas de `POST /sesiones/disponibilidad`:**
@@ -496,8 +517,24 @@ DisponibilidadDto { disponible: boolean; motivoNoDisponible?: string;
 - Evalúa bloques múltiples por día y jornadas cortadas.
 - Solo devuelve horarios donde al menos una operaria activa tenga un bloque que cubra todo el slot solicitado.
 
+**Reglas de `POST /turnos/disponibilidad-mes`:**
+- `mes` debe tener formato `YYYY-MM`.
+- No devuelve horarios para fechas pasadas.
+- Reutiliza la misma lógica real de `GET /turnos/disponibilidad`.
+- Devuelve todos los días del mes en una sola respuesta.
+
+**Reglas de `POST /sesiones/disponibilidad-mes`:**
+- `mes` debe tener formato `YYYY-MM`.
+- No devuelve horarios para fechas pasadas.
+- Reutiliza la misma lógica real de `POST /sesiones/disponibilidad`.
+- Devuelve todos los días del mes en una sola respuesta.
+
+**Reglas de `GET /reglas-descuento-sesion/publicas`:**
+- Devuelve solo reglas activas de servicios activos.
+- Se usa para mostrar descuentos automáticos de sesión sin hardcodear porcentajes en frontend.
+
 **Errores de negocio/validación agregados para disponibilidad:**
-- `MES_INVALIDO`
+- `DISPONIBILIDAD_REQUEST_INVALIDA`
 - `DIA_SEMANA_INVALIDO`
 - `BLOQUES_INVALIDOS`
 - `EXCEPCION_SUPERPUESTA`
@@ -508,7 +545,10 @@ DisponibilidadDto { disponible: boolean; motivoNoDisponible?: string;
 - `codigoDescuento` puede usarse con cliente registrado o invitado.
 - No se permite enviar `cuponId` y `codigoDescuento` al mismo tiempo.
 - Si la creación falla, no se consume uso.
-- Si la creación es exitosa, el uso se consume inmediatamente y no se devuelve luego.
+- Si la creación es exitosa, se guarda la referencia al beneficio y el precio final estimado, pero no se consume todavía.
+- El consumo ocurre recién al confirmar la reserva.
+- Si al confirmar el beneficio ya no aplica o no está disponible, la reserva no pasa a `Confirmado`.
+- Una vez consumido por confirmación, no se reintegra automáticamente aunque luego cambie a `Cancelado`, `Multa`, `Ausente`, `Realizado`, `Impago` o `Publicidad`.
 
 ### 5.6 Cupones
 
@@ -806,13 +846,14 @@ Ver `ETEREO_BACKEND_SOT.md` sección 8 para la tabla completa de `ErrorCode` por
 | `CAMPO_YA_COMPLETO` | 409 | Se intentó modificar telefono o sexo ya completado |
 | `PERFIL_YA_COMPLETO` | 409 | Telefono y sexo ya estaban completos |
 
-**Errores nuevos — Sesiones / disponibilidad previa:**
+**Errores nuevos — Disponibilidad / sesiones:**
 | Código | Status | Mensaje |
 |---|---|---|
 | `ZONAS_REQUERIDAS` | 400 | Debe incluir al menos una zona |
 | `VARIANTE_REQUERIDA` | 400 | La zona requiere `varianteId` |
 | `VARIANTE_INVALIDA` | 400 | La variante no corresponde al subservicio enviado |
 | `DURACION_NO_CONFIGURADA` | 400 | Falta la duración real de alguna zona |
+| `DISPONIBILIDAD_REQUEST_INVALIDA` | 400 | El parámetro `mes` debe tener formato `YYYY-MM` |
 
 **Errores nuevos — Códigos de descuento / descuentos mixtos:**
 | Código | Status | Mensaje |
@@ -822,6 +863,9 @@ Ver `ETEREO_BACKEND_SOT.md` sección 8 para la tabla completa de `ErrorCode` por
 | `CODIGO_DESCUENTO_AGOTADO` | 409 | El código de descuento agotó sus usos |
 | `CODIGO_DESCUENTO_NO_APLICA` | 409 | El código no aplica al ítem o sesión seleccionada |
 | `CODIGO_DESCUENTO_REQUIERE_LIMITE` | 400 | El código debe tener vencimiento, usos máximos o ambos |
+| `CUPON_NO_DISPONIBLE_AL_CONFIRMAR` | 409 | El cupón ya no está disponible o aplicable al confirmar |
+| `CODIGO_DESCUENTO_NO_DISPONIBLE_AL_CONFIRMAR` | 409 | El código ya no está disponible o aplicable al confirmar |
+| `DESCUENTO_YA_CONSUMIDO` | 409 | El beneficio ya fue consumido para esa reserva |
 | `DESCUENTO_CONFLICTIVO` | 409 | No se puede enviar cupón y código a la vez |
 | `CUPON_REQUIERE_CLIENTE_REGISTRADO` | 400 | Los cupones son exclusivos para clientes registrados |
 
